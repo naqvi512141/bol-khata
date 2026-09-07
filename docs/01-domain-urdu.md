@@ -121,6 +121,17 @@ URDU_CARDINALS = [
     # compositional rule you can implement to generate them.
 ]
 
+# An unfilled cardinal is simply an unknown word. parse_number_words returns
+# None for it, the token stays unlabelled, and falls through to residue.
+# Do NOT invent the missing words. Do NOT fall back to digit parsing for word
+# tokens (digit parsing is a separate path and always works on ASCII/Urdu
+# digit characters).
+#
+# Enforcing completeness: tests/normalizer/test_numbers.py must contain
+# test_cardinal_table_complete asserting every integer 0-99 is present in
+# the table, marked @pytest.mark.xfail(reason="native-speaker verification
+# pending"). This makes completing the table enforced rather than optional.
+
 URDU_MULTIPLIERS = [
     (100,     "سو"),      # sau
     (1000,    "ہزار"),    # hazaar
@@ -219,12 +230,26 @@ UNITS_CANON = {word: spec for spec, word in [
 ]}
 ```
 
-### `paw` is ambiguous — disambiguate by the NEXT token
+### `paw` disambiguation — fully specified
 
-- Next token is a **unit** → `paw` is a quantifier: `0.25 × that unit`.
-  `paw kilo` = 0.25 kg.
-- Next token is an **item** → `paw` is the unit itself, meaning 250 g.
-  `paw cheeni` = 0.25 kg of sugar.
+`paw` always yields **0.25 of the item's mass unit.** The disambiguation
+determines how it is labelled, not its numeric value:
+
+1. Next token is a **unit** → `paw` is a **quantifier**: `0.25 × that unit`.
+   `paw kilo` = 0.25 kg.
+2. Next token is an **item** → `paw` is the **unit** itself, meaning 250 g.
+   `paw cheeni` = 0.25 kg of sugar.
+3. `paw` stands **alone** (no following token) → default to **0.25 kg**.
+4. If the resolved SKU's `default_unit` is **not a mass unit** (`kg` or `g`),
+   `paw` is **ambiguous → blocking**. `"paw bottle"` is not a real quantity.
+
+### Units without Urdu tokens (`ml`, `piece`)
+
+`ml` and `piece` exist in the `Unit` literal because a SKU's `default_unit`
+may legitimately be one of them. However, there are **no Urdu tokens** for
+them — do not invent any. The resolving rule is: **when no unit is spoken,
+use the SKU's `default_unit`.** `"aik Olpers"` gives `qty=1` with the unit
+from the SKU record. Shopkeepers say `"bottle"`, not `"millilitre"`.
 
 ---
 
@@ -246,8 +271,13 @@ FILLERS = ["اچھا", "ٹھیک", "ہاں", "وہ", "یار", "دیکھو", "ا
 
 NEGATION = ["نہیں", "غلط", "رکو", "ایک منٹ"]
 #            nahin   ghalat  ruko   ek minute
-# Marks self-correction. Values BEFORE the marker in the same line scope are
-# discarded (keep them in `payload` for audit).
+# Marks self-correction. Negation scope is defined NARROWLY:
+#   A negation marker discards the SINGLE MOST RECENT QTY or MONEY token
+#   preceding it WITHIN THE CURRENT LINE ITEM — not the whole item, not the
+#   whole utterance.
+#   If no such token exists (e.g. negation is the first token), ignore the
+#   marker and multiply confidence by 0.95.
+#   Keep every discarded value in `payload` for audit.
 
 UDHAAR_MARKERS = ["ادھار", "خاتہ", "لکھ لو", "لکھ دو", "khata", "udhaar"]
 CASH_MARKERS   = ["نقد", "کیش", "ادا", "cash"]
@@ -325,14 +355,17 @@ authoritative; do not adjust them to make code pass.
 ### Extractor (order independence)
 
 Same basket, four word orders. **All four must produce identical items.**
+`order_form` is specified explicitly for every case.
 
 | Input | Expected |
 |---|---|
 | `Ahmed bhai ka, do kilo cheeni, aadha kilo besan` | customer=Ahmed, 2 items, `order_form=canonical` |
 | `do kilo cheeni, aadha kilo besan, Ahmed bhai` | customer=Ahmed, 2 items, `order_form=name_last` |
 | `do kilo cheeni, Ahmed bhai ka, aadha kilo besan` | customer=Ahmed, 2 items, `order_form=name_medial` |
+| `do kilo cheeni, aadha kilo besan` (draft open) | customer from draft, `payment_type=udhaar`, `order_form=no_name_draft` |
 | `do kilo cheeni, aadha kilo besan` (no draft open) | customer absent, `payment_type=cash`, `order_form=no_name_cash` |
 | `aik paw laal mirch` | ONE item (`laal mirch`), not two |
+| `paw bottle` (SKU default_unit is not mass) | `paw` is **ambiguous → blocking** |
 | `do kilo cheeni, Ahmed bhai, Bilal bhai` | two residue spans → **blocking** |
 | Unknown word adjacent to a qty | provisional SKU, NOT a customer |
 | Unknown word isolated | new-customer candidate |

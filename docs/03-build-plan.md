@@ -120,13 +120,15 @@ cd server && pytest tests/extractor -q -v
 
 - `pricing/resolver.py` — three-tier priority per `docs/02` §6
 - `pricing/catalogue.py` — load JSON, `current_price()`, `median_price()`,
-  `observe_price()` with an EWMA
+  `observe_price()` (appends to `price_history`; `median_price` returns the
+  median of the last 10 entries, or `None` if fewer than 3 exist)
 - `validation/rules.py` — V1–V7 per `docs/02` §7, each rule a separate function
 - `validation/confidence.py` — composition per `docs/02` §5
 
 **Accept when:** tests prove each of V1–V7 fires on a crafted failing input and
 stays silent on a passing one; V1 is **skipped** when `stated_total is None`;
-V3 catches a 10× price error; `requires_llm` is `False` when the only blocking
+V3 catches a 10× price error; V3 is **skipped** when fewer than 3 price
+observations exist; `requires_llm` is `False` when the only blocking
 issue is V6 or V7; no `float` appears in any money path
 (`grep -rn "float" app/pricing app/validation` reviewed manually).
 

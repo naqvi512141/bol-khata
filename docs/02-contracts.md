@@ -49,6 +49,7 @@ class LineItem(BaseModel):
     display_name: str | None = None
     qty: float | None = None
     unit: Unit | None = None
+    spoken_amount: int | None = None               # integer PKR, from MONEY token adjacent to line item
     unit_price: int | None = None                  # integer PKR
     line_total: int | None = None                  # integer PKR
     price_source: Literal["spoken", "catalogue", "missing"] = "missing"
@@ -135,7 +136,15 @@ class Customer(BaseModel):
 
 ## 2. TypeScript interfaces — `client/src/types.ts`
 
-Must mirror section 1 exactly. If one changes, both change in the same commit.
+Mirrors the **client-relevant subset** of section 1. If one changes, both change
+in the same commit.
+
+**Server-only fields** (present in the Python model, absent from TS):
+- `ParsedDraft.residue` — debug/audit, used only in server telemetry
+- `ParsedDraft.normalized_tokens` — debug/audit, the folded token stream
+- `ParsedDraft.raw_texts` — debug/audit, original ASR texts per utterance
+
+These are intentionally omitted; the client does not need them.
 
 ```ts
 export type Unit = 'kg' | 'g' | 'l' | 'ml' | 'dozen' | 'packet'
@@ -152,6 +161,7 @@ export interface LineItem {
   display_name: string | null;
   qty: number | null;
   unit: Unit | null;
+  spoken_amount: number | null;     // integer PKR, from MONEY token adjacent to line item
   unit_price: number | null;
   line_total: number | null;
   price_source: PriceSource;
@@ -253,6 +263,9 @@ PASS 2  n-gram SKU match       spans of 3 tokens, then 2, then 1
                                skip any span already labelled
 
 PASS 3  n-gram customer match  same mechanism, customer list
+                               CONSUMES both resolved AND ambiguous matches
+                               (prevents half-matched names being re-read as
+                               products). Span must carry match_status.
 
 PASS 4  group line items       QTY / UNIT / ITEM / MONEY tokens that are
                                ADJACENT form one line item
@@ -260,10 +273,28 @@ PASS 4  group line items       QTY / UNIT / ITEM / MONEY tokens that are
 PASS 5  collect residue        any span not absorbed by a line item,
                                plus unlabelled tokens
 
-PASS 6  attribute residue      residue is the customer, wherever it sat
+PASS 6  attribute residue      residue is the customer, wherever it sat.
+                               Propagate the Span's match_status into
+                               CustomerRef.status. An ambiguous status then
+                               blocks via V6 as intended.
 ```
 
+`Span` must carry `match_status: Literal["resolved", "ambiguous"]` so that
+Pass 6 can propagate it into `CustomerRef.status` without re-running the
+match. An ambiguous customer consumed in Pass 3 still blocks via V6.
+
 ```python
+from dataclasses import dataclass
+
+@dataclass
+class Span:
+    start: int
+    end: int
+    label: str                          # "ITEM" | "CUST"
+    ref_id: str | None
+    score: float
+    match_status: str = "resolved"      # "resolved" | "ambiguous"
+
 def extract(tokens: list[str],
             catalogue: list[SKU],
             customers: list[Customer],
@@ -287,6 +318,8 @@ def extract(tokens: list[str],
                 spans.append(Span(i, i + n, "ITEM", m.sku_id, m.score))
 
     # PASS 3 -- customer n-grams, longest first
+    # Consumes BOTH resolved and ambiguous to prevent re-reading as product.
+    # Span.match_status records which, for Pass 6 to propagate.
     for n in (3, 2, 1):
         for i in range(len(tokens) - n + 1):
             if any(labels[i:i + n]):
@@ -295,7 +328,8 @@ def extract(tokens: list[str],
             if m.status in ("resolved", "ambiguous"):
                 for j in range(i, i + n):
                     labels[j] = "CUST"
-                spans.append(Span(i, i + n, "CUST", m.customer_id, m.score))
+                spans.append(Span(i, i + n, "CUST", m.customer_id, m.score,
+                                  match_status=m.status))
 
     # PASS 4
     lines, consumed = group_line_items(tokens, labels, spans)
@@ -303,8 +337,8 @@ def extract(tokens: list[str],
     # PASS 5
     residue = collect_residue(tokens, labels, spans, consumed)
 
-    # PASS 6
-    customer, order_form = attribute_customer(residue, labels, lines, open_draft)
+    # PASS 6 -- propagate Span.match_status into CustomerRef.status
+    customer, order_form = attribute_customer(residue, labels, lines, spans, open_draft)
 
     return build_parsed_draft(customer, lines, residue, order_form, tokens)
 ```
@@ -375,8 +409,12 @@ if no_speech_prob > 0.6:
 
 price_source_score = {"spoken": 1.0, "catalogue": 0.8, "missing": 0.0}
 
+# NOTE: match_score defaults —
+#   provisional SKUs: match_score = 0.3
+#   unknown SKUs:     match_score = 0.0
+# No matched SKUs must LOWER confidence, not leave it at maximum.
 confidence = (0.35 * asr_conf
-            + 0.20 * min(sku_match_scores or [1.0])   # weakest link, not mean
+            + 0.20 * min([i.match_score for i in items] or [0.0])
             + 0.20 * customer_conf
             + 0.10 * price_source_score[worst_price_source]
             + 0.15 * (1.0 if validation.passed else 0.0))
@@ -425,7 +463,7 @@ def resolve_price(line: LineItem, catalogue: Catalogue) -> LineItem:
 |---|---|---|---|
 | V1 | `sum(line_totals) == stated_total`. **Skipped when `stated_total is None`** | Blocking | Route to LLM, then confirm |
 | V2 | `round(qty * unit_price) == line_total` when all three present | Blocking | Highlight the line |
-| V3 | `line_total` within `[0.6×, 1.7×]` of `SKU median × qty` | Warning | Highlight price field |
+| V3 | `line_total` within `[0.6×, 1.7×]` of `SKU median × qty`. **Median** = median of the last 10 price observations. **Skipped** when fewer than 3 observations exist (no reliable baseline). | Warning | Highlight price field |
 | V4 | `qty <= sku.max_plausible_qty` | Warning | Highlight qty field |
 | V5 | Every monetary value `> 0` and an `int` | Blocking | Reject, re-record |
 | V6 | `customer.status == "resolved"` OR `payment_type == "cash"` | Blocking | Disambiguation sheet |
@@ -438,6 +476,18 @@ of them is V6 or V7 (those need a human, not a model).
 errors (300 heard as 3000) that are arithmetically self-consistent. With V1
 often skipped (prices usually are not spoken), V3 is frequently the only
 automated guard between a bad number and the ledger.
+
+### V3 median specification
+
+- `observe_price(sku_id, amount, qty)` appends to `price_history`.
+- `median_price(sku_id)` returns the **median** of the last 10 entries, or
+  `None` if fewer than 3 exist.
+- When `median_price` returns `None`, V3 is **skipped** for that line (no
+  baseline to compare against).
+- **Do not use EWMA.** Reason: V3 exists to catch outliers, and an EWMA is
+  dragged by the outlier it is meant to catch — one 10× error would raise the
+  baseline and make the next 10× error look normal. A median is robust to
+  exactly that.
 
 ---
 
