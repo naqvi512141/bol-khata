@@ -1,0 +1,122 @@
+[
+  {
+    "customer_id": "CUST_001",
+    "display_name": "احمد",
+    "aliases": ["ahmed", "احمد بھائی"],
+    "phone": "03001234501",
+    "balance": 2500,
+    "last_txn_at": "2026-09-06T14:30:00+05:00"
+  },
+  {
+    "customer_id": "CUST_002",
+    "display_name": "احمد علی",
+    "aliases": ["ahmed ali", "احمد علی بھائی"],
+    "phone": "03001234502",
+    "balance": 1800,
+    "last_txn_at": "2026-09-05T10:00:00+05:00"
+  },
+  {
+    "customer_id": "CUST_003",
+    "display_name": "احمد",
+    "aliases": ["ahmad", "احمد صاحب"],
+    "phone": "03001234503",
+    "balance": 0,
+    "last_txn_at": "2026-08-20T09:15:00+05:00"
+  },
+  {
+    "customer_id": "CUST_004",
+    "display_name": "بلال",
+    "aliases": ["bilal", "بلال بھائی"],
+    "phone": "03001234504",
+    "balance": 4200,
+    "last_txn_at": "2026-09-07T08:45:00+05:00"
+  },
+  {
+    "customer_id": "CUST_005",
+    "display_name": "عمران",
+    "aliases": ["imran", "عمران بھائی"],
+    "phone": "03001234505",
+    "balance": 900,
+    "last_txn_at": "2026-09-04T16:00:00+05:00"
+  },
+  {
+    "customer_id": "CUST_006",
+    "display_name": "فاطمہ",
+    "aliases": ["fatima", "فاطمہ باجی", "فاطمہ آپا"],
+    "phone": "03001234506",
+    "balance": 3100,
+    "last_txn_at": "2026-09-06T11:20:00+05:00"
+  },
+  {
+    "customer_id": "CUST_007",
+    "display_name": "حسن",
+    "aliases": ["hassan", "حسن بھائی"],
+    "phone": "03001234507",
+    "balance": 0,
+    "last_txn_at": "2026-08-15T13:00:00+05:00"
+  },
+  {
+    "customer_id": "CUST_008",
+    "display_name": "حسین",
+    "aliases": ["hussain", "حسین بھائی"],
+    "phone": "03001234508",
+    "balance": 1500,
+    "last_txn_at": "2026-09-03T17:30:00+05:00"
+  },
+  {
+    "customer_id": "CUST_009",
+    "display_name": "خدیجہ خالہ",
+    "aliases": ["khadija", "خدیجہ", "khadija khala"],
+    "phone": null,
+    "balance": 600,
+    "last_txn_at": "2026-09-01T09:00:00+05:00"
+  },
+  {
+    "customer_id": "CUST_010",
+    "display_name": "رشید چاچا",
+    "aliases": ["rasheed", "رشید", "rasheed chacha"],
+    "phone": "03001234510",
+    "balance": 5000,
+    "last_txn_at": "2026-09-07T07:00:00+05:00"
+  },
+  {
+    "customer_id": "CUST_011",
+    "display_name": "سلمان",
+    "aliases": ["salman", "سلمان بھائی"],
+    "phone": "03001234511",
+    "balance": 0,
+    "last_txn_at": null
+  },
+  {
+    "customer_id": "CUST_012",
+    "display_name": "عائشہ",
+    "aliases": ["ayesha", "عائشہ باجی"],
+    "phone": "03001234512",
+    "balance": 2200,
+    "last_txn_at": "2026-09-02T14:45:00+05:00"
+  },
+  {
+    "customer_id": "CUST_013",
+    "display_name": "محمد",
+    "aliases": ["muhammad", "محمد بھائی"],
+    "phone": "03001234513",
+    "balance": 800,
+    "last_txn_at": "2026-09-05T12:30:00+05:00"
+  },
+  {
+    "customer_id": "CUST_014",
+    "display_name": "نعیم",
+    "aliases": ["naeem", "نعیم بھائی", "نعیم صاحب"],
+    "phone": "03001234514",
+    "balance": 3500,
+    "last_txn_at": "2026-09-06T18:00:00+05:00"
+  },
+  {
+    "customer_id": "CUST_015",
+    "display_name": "زبیدہ آپا",
+    "aliases": ["zubaida", "زبیدہ", "zubaida aapa"],
+    "phone": null,
+    "balance": 1200,
+    "last_txn_at": "2026-08-28T10:30:00+05:00"
+  }
+]

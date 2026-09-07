@@ -1,0 +1,322 @@
+[
+  {
+    "sku_id": "SKU_001",
+    "display_name": "چینی",
+    "aliases": ["cheeni", "sugar", "شکر"],
+    "default_unit": "kg",
+    "unit_price": 180,
+    "max_plausible_qty": 25.0
+  },
+  {
+    "sku_id": "SKU_002",
+    "display_name": "آٹا",
+    "aliases": ["aata", "aatta", "flour"],
+    "default_unit": "kg",
+    "unit_price": 140,
+    "max_plausible_qty": 25.0
+  },
+  {
+    "sku_id": "SKU_003",
+    "display_name": "چاول",
+    "aliases": ["chawal", "rice", "باسمتی"],
+    "default_unit": "kg",
+    "unit_price": 350,
+    "max_plausible_qty": 25.0
+  },
+  {
+    "sku_id": "SKU_004",
+    "display_name": "دال چنا",
+    "aliases": ["daal chana", "chana daal", "دال"],
+    "default_unit": "kg",
+    "unit_price": 320,
+    "max_plausible_qty": 10.0
+  },
+  {
+    "sku_id": "SKU_005",
+    "display_name": "دال مسور",
+    "aliases": ["daal masoor", "masoor daal", "مسور"],
+    "default_unit": "kg",
+    "unit_price": 340,
+    "max_plausible_qty": 10.0
+  },
+  {
+    "sku_id": "SKU_006",
+    "display_name": "بیسن",
+    "aliases": ["besan", "gram flour", "بیسن"],
+    "default_unit": "kg",
+    "unit_price": 280,
+    "max_plausible_qty": 10.0
+  },
+  {
+    "sku_id": "SKU_007",
+    "display_name": "لال مرچ",
+    "aliases": ["laal mirch", "red chilli", "سرخ مرچ", "lal mirch"],
+    "default_unit": "kg",
+    "unit_price": 800,
+    "max_plausible_qty": 5.0
+  },
+  {
+    "sku_id": "SKU_008",
+    "display_name": "چائے پتی",
+    "aliases": ["chai patti", "tea", "چاۓ پتی", "chaye patti"],
+    "default_unit": "kg",
+    "unit_price": 1800,
+    "max_plausible_qty": 2.0
+  },
+  {
+    "sku_id": "SKU_009",
+    "display_name": "دیسی گھی",
+    "aliases": ["desi ghee", "ghee", "اصلی گھی", "desi ghi"],
+    "default_unit": "kg",
+    "unit_price": 2800,
+    "max_plausible_qty": 5.0
+  },
+  {
+    "sku_id": "SKU_010",
+    "display_name": "سرف ایکسل",
+    "aliases": ["surf excel", "surf", "سرف"],
+    "default_unit": "packet",
+    "unit_price": 120,
+    "max_plausible_qty": 12.0
+  },
+  {
+    "sku_id": "SKU_011",
+    "display_name": "ہلدی پاؤڈر",
+    "aliases": ["haldi powder", "haldi", "ہلدی"],
+    "default_unit": "g",
+    "unit_price": 60,
+    "max_plausible_qty": 5.0
+  },
+  {
+    "sku_id": "SKU_012",
+    "display_name": "نمک",
+    "aliases": ["namak", "salt"],
+    "default_unit": "kg",
+    "unit_price": 60,
+    "max_plausible_qty": 10.0
+  },
+  {
+    "sku_id": "SKU_013",
+    "display_name": "تیل",
+    "aliases": ["tel", "oil", "کھانے کا تیل"],
+    "default_unit": "l",
+    "unit_price": 550,
+    "max_plausible_qty": 10.0
+  },
+  {
+    "sku_id": "SKU_014",
+    "display_name": "دودھ",
+    "aliases": ["doodh", "milk"],
+    "default_unit": "l",
+    "unit_price": 220,
+    "max_plausible_qty": 10.0
+  },
+  {
+    "sku_id": "SKU_015",
+    "display_name": "انڈے",
+    "aliases": ["anday", "eggs", "انڈا"],
+    "default_unit": "dozen",
+    "unit_price": 360,
+    "max_plausible_qty": 10.0
+  },
+  {
+    "sku_id": "SKU_016",
+    "display_name": "مکھن",
+    "aliases": ["makhan", "butter"],
+    "default_unit": "g",
+    "unit_price": 180,
+    "max_plausible_qty": 5.0
+  },
+  {
+    "sku_id": "SKU_017",
+    "display_name": "دہی",
+    "aliases": ["dahi", "yogurt", "یوگرٹ"],
+    "default_unit": "kg",
+    "unit_price": 250,
+    "max_plausible_qty": 5.0
+  },
+  {
+    "sku_id": "SKU_018",
+    "display_name": "Olpers",
+    "aliases": ["olpers", "اولپرز"],
+    "default_unit": "ml",
+    "unit_price": 280,
+    "max_plausible_qty": 12.0
+  },
+  {
+    "sku_id": "SKU_019",
+    "display_name": "پنیر",
+    "aliases": ["paneer", "cheese"],
+    "default_unit": "g",
+    "unit_price": 200,
+    "max_plausible_qty": 5.0
+  },
+  {
+    "sku_id": "SKU_020",
+    "display_name": "سوجی",
+    "aliases": ["soji", "suji", "sooji", "semolina"],
+    "default_unit": "kg",
+    "unit_price": 200,
+    "max_plausible_qty": 5.0
+  },
+  {
+    "sku_id": "SKU_021",
+    "display_name": "میدہ",
+    "aliases": ["maida", "refined flour"],
+    "default_unit": "kg",
+    "unit_price": 160,
+    "max_plausible_qty": 10.0
+  },
+  {
+    "sku_id": "SKU_022",
+    "display_name": "ڈبل روٹی",
+    "aliases": ["double roti", "bread", "بریڈ"],
+    "default_unit": "packet",
+    "unit_price": 150,
+    "max_plausible_qty": 5.0
+  },
+  {
+    "sku_id": "SKU_023",
+    "display_name": "بسکٹ",
+    "aliases": ["biscuit", "biskit"],
+    "default_unit": "packet",
+    "unit_price": 50,
+    "max_plausible_qty": 24.0
+  },
+  {
+    "sku_id": "SKU_024",
+    "display_name": "صابن",
+    "aliases": ["sabun", "soap"],
+    "default_unit": "piece",
+    "unit_price": 100,
+    "max_plausible_qty": 12.0
+  },
+  {
+    "sku_id": "SKU_025",
+    "display_name": "شیمپو",
+    "aliases": ["shampoo", "شمپو"],
+    "default_unit": "bottle",
+    "unit_price": 350,
+    "max_plausible_qty": 6.0
+  },
+  {
+    "sku_id": "SKU_026",
+    "display_name": "ٹوتھ پیسٹ",
+    "aliases": ["toothpaste", "tooth paste", "کولگیٹ"],
+    "default_unit": "piece",
+    "unit_price": 200,
+    "max_plausible_qty": 6.0
+  },
+  {
+    "sku_id": "SKU_027",
+    "display_name": "چپس",
+    "aliases": ["chips", "lays"],
+    "default_unit": "packet",
+    "unit_price": 50,
+    "max_plausible_qty": 24.0
+  },
+  {
+    "sku_id": "SKU_028",
+    "display_name": "کولا",
+    "aliases": ["cola", "coke", "pepsi", "مشروب"],
+    "default_unit": "bottle",
+    "unit_price": 80,
+    "max_plausible_qty": 24.0
+  },
+  {
+    "sku_id": "SKU_029",
+    "display_name": "پانی",
+    "aliases": ["paani", "water", "mineral water"],
+    "default_unit": "bottle",
+    "unit_price": 70,
+    "max_plausible_qty": 24.0
+  },
+  {
+    "sku_id": "SKU_030",
+    "display_name": "ماچس",
+    "aliases": ["match", "matchis", "ماچیس"],
+    "default_unit": "box",
+    "unit_price": 20,
+    "max_plausible_qty": 24.0
+  },
+  {
+    "sku_id": "SKU_031",
+    "display_name": "موم بتی",
+    "aliases": ["candle", "mombatti"],
+    "default_unit": "piece",
+    "unit_price": 30,
+    "max_plausible_qty": 24.0
+  },
+  {
+    "sku_id": "SKU_032",
+    "display_name": "سرکہ",
+    "aliases": ["sirka", "vinegar"],
+    "default_unit": "bottle",
+    "unit_price": 120,
+    "max_plausible_qty": 6.0
+  },
+  {
+    "sku_id": "SKU_033",
+    "display_name": "کالی مرچ",
+    "aliases": ["kali mirch", "black pepper", "گول مرچ"],
+    "default_unit": "g",
+    "unit_price": 120,
+    "max_plausible_qty": 2.0
+  },
+  {
+    "sku_id": "SKU_034",
+    "display_name": "زیرہ",
+    "aliases": ["zeera", "cumin", "جیرا"],
+    "default_unit": "g",
+    "unit_price": 80,
+    "max_plausible_qty": 2.0
+  },
+  {
+    "sku_id": "SKU_035",
+    "display_name": "دھنیا",
+    "aliases": ["dhania", "coriander"],
+    "default_unit": "g",
+    "unit_price": 60,
+    "max_plausible_qty": 2.0
+  },
+  {
+    "sku_id": "SKU_036",
+    "display_name": "گڑ",
+    "aliases": ["gur", "jaggery"],
+    "default_unit": "kg",
+    "unit_price": 250,
+    "max_plausible_qty": 5.0
+  },
+  {
+    "sku_id": "SKU_037",
+    "display_name": "کپڑے دھونے کا صابن",
+    "aliases": ["laundry soap", "dhone ka sabun"],
+    "default_unit": "piece",
+    "unit_price": 80,
+    "max_plausible_qty": 12.0
+  },
+  {
+    "sku_id": "SKU_038",
+    "display_name": "مونگ دال",
+    "aliases": ["moong daal", "moong dal", "مونگ"],
+    "default_unit": "kg",
+    "unit_price": 380,
+    "max_plausible_qty": 10.0
+  },
+  {
+    "sku_id": "SKU_039",
+    "display_name": "کھجور",
+    "aliases": ["khajoor", "dates"],
+    "default_unit": "kg",
+    "unit_price": 600,
+    "max_plausible_qty": 5.0
+  },
+  {
+    "sku_id": "SKU_040",
+    "display_name": "چاکلیٹ",
+    "aliases": ["chocolate", "dairy milk"],
+    "default_unit": "piece",
+    "unit_price": 100,
+    "max_plausible_qty": 24.0
+  }
+]

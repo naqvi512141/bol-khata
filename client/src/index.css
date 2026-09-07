@@ -1,0 +1,14 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* Nastaliq text needs more line height */
+.font-nastaliq {
+  line-height: 2;
+}
+
+/* Numbers stay LTR even in an RTL context — AGENTS.md §5 */
+.ltr-nums {
+  direction: ltr;
+  unicode-bidi: isolate;
+}

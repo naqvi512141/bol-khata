@@ -1,0 +1,120 @@
+{
+  "utterances": [
+    {
+      "id": "u001",
+      "audio": "u001.webm",
+      "ground_truth_text": "احمد بھائی کا دو کلو چینی",
+      "expected": {
+        "customer_id": "CUST_001",
+        "order_form": "canonical",
+        "items": [{"sku_id": "SKU_001", "qty": 2.0, "unit": "kg"}]
+      },
+      "tags": ["canonical", "clean_audio"]
+    },
+    {
+      "id": "u002",
+      "audio": "u002.webm",
+      "ground_truth_text": "دو کلو چینی آدھا کلو بیسن بلال بھائی",
+      "expected": {
+        "customer_id": "CUST_004",
+        "order_form": "name_last",
+        "items": [
+          {"sku_id": "SKU_001", "qty": 2.0, "unit": "kg"},
+          {"sku_id": "SKU_006", "qty": 0.5, "unit": "kg"}
+        ]
+      },
+      "tags": ["name_last", "fraction"]
+    },
+    {
+      "id": "u003",
+      "audio": "u003.webm",
+      "ground_truth_text": "تین کلو آٹا عمران بھائی کا دو لیٹر تیل",
+      "expected": {
+        "customer_id": "CUST_005",
+        "order_form": "name_medial",
+        "items": [
+          {"sku_id": "SKU_002", "qty": 3.0, "unit": "kg"},
+          {"sku_id": "SKU_013", "qty": 2.0, "unit": "l"}
+        ]
+      },
+      "tags": ["name_medial"]
+    },
+    {
+      "id": "u004",
+      "audio": "u004.webm",
+      "ground_truth_text": "ایک پاؤ لال مرچ",
+      "expected": {
+        "customer_id": null,
+        "order_form": "no_name_cash",
+        "items": [{"sku_id": "SKU_007", "qty": 0.25, "unit": "kg"}]
+      },
+      "tags": ["no_name", "multi_token_sku", "fraction"]
+    },
+    {
+      "id": "u005",
+      "audio": "u005.webm",
+      "ground_truth_text": "پونے چار کلو چاول",
+      "expected": {
+        "customer_id": null,
+        "order_form": "no_name_cash",
+        "items": [{"sku_id": "SKU_003", "qty": 3.75, "unit": "kg"}]
+      },
+      "tags": ["fraction", "no_name"]
+    },
+    {
+      "id": "u006",
+      "audio": "u006.webm",
+      "ground_truth_text": "احمد بھائی کا سات سو بیس روپے کا سامان",
+      "expected": {
+        "customer_id": "CUST_001",
+        "order_form": "canonical",
+        "items": []
+      },
+      "tags": ["canonical", "spoken_price", "do_homophone"]
+    },
+    {
+      "id": "u007",
+      "audio": "u007.webm",
+      "ground_truth_text": "نہیں تین نہیں پانچ کلو چینی",
+      "expected": {
+        "customer_id": null,
+        "order_form": "no_name_cash",
+        "items": [{"sku_id": "SKU_001", "qty": 5.0, "unit": "kg"}]
+      },
+      "tags": ["self_correction", "no_name"]
+    },
+    {
+      "id": "u008",
+      "audio": "u008.webm",
+      "ground_truth_text": "فاطمہ باجی ڈیڑھ کلو دیسی گھی ساڑھے تین سو روپے",
+      "expected": {
+        "customer_id": "CUST_006",
+        "order_form": "canonical",
+        "items": [{"sku_id": "SKU_009", "qty": 1.5, "unit": "kg"}]
+      },
+      "tags": ["canonical", "fraction", "multi_token_sku", "spoken_price"]
+    },
+    {
+      "id": "u009",
+      "audio": "u009.webm",
+      "ground_truth_text": "دو پیکٹ سرف ایکسل",
+      "expected": {
+        "customer_id": null,
+        "order_form": "no_name_cash",
+        "items": [{"sku_id": "SKU_010", "qty": 2.0, "unit": "packet"}]
+      },
+      "tags": ["multi_token_sku", "no_name", "no_spoken_price"]
+    },
+    {
+      "id": "u010",
+      "audio": "u010.webm",
+      "ground_truth_text": "دو کلو چینی دے دو",
+      "expected": {
+        "customer_id": null,
+        "order_form": "no_name_cash",
+        "items": [{"sku_id": "SKU_001", "qty": 2.0, "unit": "kg"}]
+      },
+      "tags": ["do_homophone", "no_name"]
+    }
+  ]
+}
