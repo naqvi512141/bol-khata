@@ -1,0 +1,17 @@
+.env
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+node_modules/
+dist/
+build/
+logs/
+*.egg-info/
+.DS_Store
+server/data/corpus/*.webm
+server/data/corpus/*.wav
+client/public/tts/*.mp3
