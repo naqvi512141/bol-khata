@@ -138,7 +138,7 @@ issue is V6 or V7; no `float` appears in any money path
 
 **Scope:** `server/app/asr/`, `server/app/ingest/`.
 
-- `ingest/audio.py` — ffmpeg in-memory resample to 16 kHz mono s16le; reject
+- `ingest/audio.py` — PyAV (bundled with faster-whisper, avoids external ffmpeg binary) in-memory resample to 16 kHz mono s16le; reject
   `< 700 ms` or `> 20 s`
 - `asr/base.py` — `ASREngine` protocol
 - `asr/groq_whisper.py` — `POST https://api.groq.com/openai/v1/audio/transcriptions`,

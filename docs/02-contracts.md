@@ -38,6 +38,7 @@ class RawASRPayload(BaseModel):
     clip_ratio: float = 0.0
     bias_prompt_hash: str = ""
     processing_ms: int = 0
+    failover_reason: str | None = None  # populated if engine failed over (e.g. auth_failure, network_error)
 
 # ---------- extraction ----------
 

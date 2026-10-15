@@ -6,8 +6,7 @@ Do not add, remove, or rename a field without asking.
 
 from typing import Literal
 
-from pydantic import BaseModel, Field
-
+from pydantic import BaseModel
 
 # ---------- ASR ----------
 
@@ -35,6 +34,7 @@ class RawASRPayload(BaseModel):
     clip_ratio: float = 0.0
     bias_prompt_hash: str = ""
     processing_ms: int = 0
+    failover_reason: str | None = None  # populated if engine failed over (e.g. auth_failure, network_error)
 
 
 # ---------- extraction ----------

@@ -73,7 +73,7 @@ CLIENT
                           | POST /v1/utterance
                           v
 SERVER
-  (b) ingest         server/app/ingest/        ffmpeg -> 16 kHz mono wav
+  (b) ingest         server/app/ingest/        PyAV -> 16 kHz mono wav (PyAV is bundled with faster-whisper; avoids external ffmpeg binary)
   (c) asr            server/app/asr/           Groq whisper-large-v3 | local
   (d) normalizer     server/app/normalizer/    digits, numbers, fractions, units
   (e) extractor      server/app/extractor/     ORDER-INDEPENDENT slot filling
