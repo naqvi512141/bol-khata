@@ -8,6 +8,7 @@ from __future__ import annotations
 
 import io
 import os
+from pathlib import Path
 from unittest.mock import MagicMock, patch
 import wave
 import httpx
@@ -77,8 +78,10 @@ def test_groq_whisper_engine_successful_call() -> None:
         # Assert multipart content was sent
         content = request.content.decode("latin1", errors="ignore")
         assert "whisper-large-v3" in content
-        assert "transcribe" in content  # AGENTS.md rule 4: NEVER translate
         assert "ur" in content
+        # AGENTS.md rule 4: we use the /transcriptions endpoint, not /translations.
+        # The "task" field is NOT sent; the endpoint path selects transcription.
+        assert "transcriptions" in str(request.url)
         return httpx.Response(200, json=mock_resp)
 
     transport = httpx.MockTransport(custom_handler)
@@ -262,15 +265,40 @@ def test_asr_service_direct_local() -> None:
 # ==================== Live Integration Tests (Skipped Offline) ====================
 
 
+_FIXTURE_WAV = Path(__file__).resolve().parent.parent / "fixtures" / "sample_ur.wav"
+
+
 @pytest.mark.skipif(
     not os.environ.get("GROQ_API_KEY"),
     reason="Live Groq test requires GROQ_API_KEY in environment",
 )
+@pytest.mark.skipif(
+    not _FIXTURE_WAV.exists(),
+    reason=f"Real audio fixture not found at {_FIXTURE_WAV}",
+)
 def test_live_groq_integration() -> None:  # pragma: no cover
-    """Integration test hitting real Groq API when GROQ_API_KEY is available."""
+    """Integration test hitting real Groq API with a real Urdu audio clip.
+
+    Uses tests/fixtures/sample_ur.wav instead of synthetic silence, which
+    Groq's API may reject as too short or empty.
+    """
     api_key = os.environ["GROQ_API_KEY"]
     engine = GroqWhisperEngine(api_key=api_key)
-    audio = _make_dummy_audio(1.0)
+
+    wav_bytes = _FIXTURE_WAV.read_bytes()
+    # Read duration from WAV header
+    with wave.open(io.BytesIO(wav_bytes), "rb") as wf:
+        duration_ms = int(wf.getnframes() / wf.getframerate() * 1000)
+        n_samples = wf.getnframes()
+        pcm = np.frombuffer(wf.readframes(n_samples), dtype=np.int16)
+
+    audio = IngestedAudio(
+        wav_bytes=wav_bytes,
+        duration_ms=duration_ms,
+        clip_ratio=0.0,
+        pcm_samples=pcm,
+    )
+
     prompt = build_bias_prompt()
     payload = engine.transcribe(
         audio=audio,

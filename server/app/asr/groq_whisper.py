@@ -1,8 +1,13 @@
 """Groq Hosted Whisper ASR implementation.
 
 Per docs/04-stack.md §4:
-model=whisper-large-v3, language=ur, task=transcribe, response_format=verbose_json, temperature=0.
+model=whisper-large-v3, language=ur, response_format=verbose_json, temperature=0.
 NEVER log or print the GROQ_API_KEY.
+
+Note: AGENTS.md rule 4 requires task="transcribe", language="ur".  We satisfy
+this by calling the /audio/transcriptions endpoint (not /audio/translations).
+The OpenAI-compatible API does NOT accept a "task" form field — the endpoint
+path itself selects transcription vs. translation.
 """
 
 from __future__ import annotations
@@ -46,6 +51,10 @@ class GroqWhisperEngine(ASREngine):
         self._client = client
         self._timeout = timeout
 
+    def _sanitize_response_text(self, text: str) -> str:
+        """Strip API key from response body so it can never appear in errors/logs."""
+        return text.replace(self._api_key, "[REDACTED]") if self._api_key else text
+
     def transcribe(
         self,
         audio: IngestedAudio,
@@ -61,10 +70,14 @@ class GroqWhisperEngine(ASREngine):
         files: dict[str, tuple[str, bytes, str]] = {
             "file": ("audio.wav", audio.wav_bytes, "audio/wav"),
         }
+        # No "task" field here.  The OpenAI-compatible API uses separate
+        # endpoints for transcription vs. translation.  We call
+        # /audio/transcriptions, which satisfies AGENTS.md rule 4
+        # (task="transcribe", language="ur") without sending a task parameter
+        # that would trigger HTTP 400.
         data: dict[str, Any] = {
             "model": "whisper-large-v3",
             "language": "ur",
-            "task": "transcribe",  # AGENTS.md rule 4: NEVER task="translate"
             "response_format": "verbose_json",
             "temperature": 0,
         }
@@ -100,17 +113,27 @@ class GroqWhisperEngine(ASREngine):
             raise GroqASRError(f"Groq API connection error: {type(e).__name__}", reason_category="network_error") from e
 
         if response.status_code == 401:
-            raise GroqASRError("Groq API authentication failed (HTTP 401)", reason_category="auth_failure")
-        elif response.status_code == 429:
-            raise GroqASRError("Groq API rate limit exceeded (HTTP 429)", reason_category="rate_limit")
-        elif response.status_code >= 500:
+            body = self._sanitize_response_text(response.text)
             raise GroqASRError(
-                f"Groq API server error (HTTP {response.status_code})",
+                f"Groq API authentication failed (HTTP 401): {body}",
+                reason_category="auth_failure",
+            )
+        elif response.status_code == 429:
+            body = self._sanitize_response_text(response.text)
+            raise GroqASRError(
+                f"Groq API rate limit exceeded (HTTP 429): {body}",
+                reason_category="rate_limit",
+            )
+        elif response.status_code >= 500:
+            body = self._sanitize_response_text(response.text)
+            raise GroqASRError(
+                f"Groq API server error (HTTP {response.status_code}): {body}",
                 reason_category="server_error",
             )
         elif response.status_code != 200:
+            body = self._sanitize_response_text(response.text)
             raise GroqASRError(
-                f"Groq API returned HTTP {response.status_code}",
+                f"Groq API returned HTTP {response.status_code}: {body}",
                 reason_category="api_error",
             )
 
