@@ -302,8 +302,11 @@ def test_llm_invoked_when_requires_llm_true_and_reruns_validation() -> None:
     with (
         patch("app.main._get_asr_service") as mock_get_asr,
         patch("app.main.extract", return_value=mismatch_draft),
+        patch("app.main.get_llm_provider") as mock_get_provider,
         patch("app.main.llm_repair") as mock_repair,
     ):
+        mock_provider = MagicMock()
+        mock_get_provider.return_value = mock_provider
         mock_service = MagicMock()
         mock_service.transcribe.return_value = mock_payload
         mock_get_asr.return_value = mock_service

@@ -1,111 +1,81 @@
 /**
- * Web Audio API synthesizer for the three standard Bol Khata chimes.
- * Plays reliably offline without relying on external audio assets.
+ * Procedural Web Audio API chimes — zero-network, instantaneous, offline audio feedback.
+ * Docs: docs/03-build-plan.md Phase 7: "Chime immediately; full spoken readback only when queue is empty."
  */
 
-class AudioCtxHolder {
-  private static _ctx: AudioContext | null = null;
+export type ChimeType = 'success' | 'review' | 'error';
 
-  static get(): AudioContext {
-    if (!this._ctx || this._ctx.state === 'closed') {
-      const AudioContextClass =
-        window.AudioContext ||
-        (window as unknown as { webkitAudioContext: typeof AudioContext }).webkitAudioContext;
-      this._ctx = new AudioContextClass();
+class ChimePlayer {
+  private ctx: AudioContext | null = null;
+
+  private getContext(): AudioContext | null {
+    if (typeof window === 'undefined') return null;
+    if (!this.ctx) {
+      const AudioCtx = window.AudioContext || (window as unknown as { webkitAudioContext: typeof AudioContext }).webkitAudioContext;
+      if (AudioCtx) {
+        this.ctx = new AudioCtx();
+      }
     }
-    if (this._ctx.state === 'suspended') {
-      this._ctx.resume().catch(() => {});
+    if (this.ctx && this.ctx.state === 'suspended') {
+      this.ctx.resume().catch(() => {});
     }
-    return this._ctx;
+    return this.ctx;
+  }
+
+  public play(type: ChimeType): void {
+    const ctx = this.getContext();
+    if (!ctx) return;
+
+    try {
+      const now = ctx.currentTime;
+      const osc = ctx.createOscillator();
+      const gain = ctx.createGain();
+      osc.connect(gain);
+      gain.connect(ctx.destination);
+
+      if (type === 'success') {
+        // High confidence commit: Pleasant rising two-tone chime (523 Hz -> 659 Hz)
+        osc.type = 'sine';
+        osc.frequency.setValueAtTime(523.25, now); // C5
+        osc.frequency.setValueAtTime(659.25, now + 0.12); // E5
+
+        gain.gain.setValueAtTime(0, now);
+        gain.gain.linearRampToValueAtTime(0.25, now + 0.02);
+        gain.gain.exponentialRampToValueAtTime(0.001, now + 0.35);
+
+        osc.start(now);
+        osc.stop(now + 0.35);
+      } else if (type === 'review') {
+        // Needs review: Two warm mid-range pulses (440 Hz)
+        osc.type = 'triangle';
+        osc.frequency.setValueAtTime(440, now); // A4
+
+        gain.gain.setValueAtTime(0, now);
+        gain.gain.linearRampToValueAtTime(0.2, now + 0.02);
+        gain.gain.exponentialRampToValueAtTime(0.02, now + 0.1);
+        gain.gain.linearRampToValueAtTime(0.2, now + 0.14);
+        gain.gain.exponentialRampToValueAtTime(0.001, now + 0.3);
+
+        osc.start(now);
+        osc.stop(now + 0.3);
+      } else if (type === 'error') {
+        // Warning / Rejected: Descending tone (330 Hz -> 220 Hz)
+        osc.type = 'sawtooth';
+        osc.frequency.setValueAtTime(329.63, now); // E4
+        osc.frequency.exponentialRampToValueAtTime(220, now + 0.25); // A3
+
+        gain.gain.setValueAtTime(0, now);
+        gain.gain.linearRampToValueAtTime(0.18, now + 0.03);
+        gain.gain.exponentialRampToValueAtTime(0.001, now + 0.28);
+
+        osc.start(now);
+        osc.stop(now + 0.28);
+      }
+    } catch {
+      // Audio playback might be prevented by browser auto-play policy before gesture
+    }
   }
 }
 
-export function playSuccessChime(): void {
-  try {
-    const ctx = AudioCtxHolder.get();
-    const now = ctx.currentTime;
+export const chimePlayer = new ChimePlayer();
 
-    const osc1 = ctx.createOscillator();
-    const osc2 = ctx.createOscillator();
-    const gain = ctx.createGain();
-
-    osc1.type = 'sine';
-    osc2.type = 'triangle';
-
-    // Upward pleasant major chord: C5 (523Hz) -> E5 (659Hz)
-    osc1.frequency.setValueAtTime(523.25, now);
-    osc1.frequency.exponentialRampToValueAtTime(659.25, now + 0.12);
-
-    osc2.frequency.setValueAtTime(659.25, now);
-    osc2.frequency.exponentialRampToValueAtTime(783.99, now + 0.12);
-
-    gain.gain.setValueAtTime(0.001, now);
-    gain.gain.linearRampToValueAtTime(0.25, now + 0.02);
-    gain.gain.exponentialRampToValueAtTime(0.001, now + 0.35);
-
-    osc1.connect(gain);
-    osc2.connect(gain);
-    gain.connect(ctx.destination);
-
-    osc1.start(now);
-    osc2.start(now);
-    osc1.stop(now + 0.36);
-    osc2.stop(now + 0.36);
-  } catch {
-    // Ignore audio playback errors if audio context blocked
-  }
-}
-
-export function playWarningChime(): void {
-  try {
-    const ctx = AudioCtxHolder.get();
-    const now = ctx.currentTime;
-
-    const osc = ctx.createOscillator();
-    const gain = ctx.createGain();
-
-    osc.type = 'sine';
-    // Mid cautionary tone: A4 (440Hz)
-    osc.frequency.setValueAtTime(440, now);
-    osc.frequency.setValueAtTime(440, now + 0.15);
-
-    gain.gain.setValueAtTime(0.001, now);
-    gain.gain.linearRampToValueAtTime(0.2, now + 0.02);
-    gain.gain.exponentialRampToValueAtTime(0.001, now + 0.3);
-
-    osc.connect(gain);
-    gain.connect(ctx.destination);
-
-    osc.start(now);
-    osc.stop(now + 0.31);
-  } catch {
-    // Ignore
-  }
-}
-
-export function playErrorChime(): void {
-  try {
-    const ctx = AudioCtxHolder.get();
-    const now = ctx.currentTime;
-
-    const osc = ctx.createOscillator();
-    const gain = ctx.createGain();
-
-    osc.type = 'sawtooth';
-    // Descending alert tone: 392Hz -> 261Hz
-    osc.frequency.setValueAtTime(392, now);
-    osc.frequency.exponentialRampToValueAtTime(261.63, now + 0.25);
-
-    gain.gain.setValueAtTime(0.001, now);
-    gain.gain.linearRampToValueAtTime(0.18, now + 0.02);
-    gain.gain.exponentialRampToValueAtTime(0.001, now + 0.4);
-
-    osc.connect(gain);
-    gain.connect(ctx.destination);
-
-    osc.start(now);
-    osc.stop(now + 0.41);
-  } catch {
-    // Ignore
-  }
-}

@@ -1,137 +1,163 @@
+/**
+ * Dexie-backed audio job queue with concurrency limit (max 3),
+ * exponential backoff, and reload survival.
+ * Docs: docs/03-build-plan.md Phase 7; AGENTS.md rule 10.
+ */
+
 import { db } from '../db';
 import type { CaptureJob, ParsedDraft } from '../types';
-import { sendUtterance } from './api';
-import { backfillOfflineSale } from '../ledger/events';
 
 const MAX_IN_FLIGHT = 3;
-const MAX_ATTEMPTS = 5;
+let inFlightCount = 0;
+let isProcessingQueue = false;
 
-export type DraftReceivedHandler = (draft: ParsedDraft, jobId: string) => void;
-export type QueueStatusHandler = (inFlight: number, queued: number) => void;
-export type QueueEmptyHandler = () => void;
-export type JobDegradedHandler = (job: CaptureJob) => void;
-export type BackfillCompleteHandler = (jobId: string, draft: ParsedDraft) => void;
+export type JobCallback = (draft: ParsedDraft, jobId: string) => void;
+const subscribers = new Set<JobCallback>();
 
-export class JobQueueManager {
-  private _inFlight = new Set<string>();
-  private _running = false;
-  private _onDraftReceived?: DraftReceivedHandler;
-  private _onStatusChange?: QueueStatusHandler;
-  private _onEmpty?: QueueEmptyHandler;
-  private _onJobDegraded?: JobDegradedHandler;
-  private _onBackfillComplete?: BackfillCompleteHandler;
+export function subscribeToJobSuccess(cb: JobCallback): () => void {
+  subscribers.add(cb);
+  return () => subscribers.delete(cb);
+}
 
-  constructor(handlers?: {
-    onDraftReceived?: DraftReceivedHandler;
-    onStatusChange?: QueueStatusHandler;
-    onEmpty?: QueueEmptyHandler;
-    onJobDegraded?: JobDegradedHandler;
-    onBackfillComplete?: BackfillCompleteHandler;
-  }) {
-    this._onDraftReceived = handlers?.onDraftReceived;
-    this._onStatusChange = handlers?.onStatusChange;
-    this._onEmpty = handlers?.onEmpty;
-    this._onJobDegraded = handlers?.onJobDegraded;
-    this._onBackfillComplete = handlers?.onBackfillComplete;
+export async function enqueueJob(params: {
+  job_id: string;
+  shop_id: string;
+  draft_id: string | null;
+  audio_blob: Blob;
+  duration_ms: number;
+  peak_rms: number;
+  clip_ratio: number;
+  codec: string;
+}): Promise<CaptureJob> {
+  const now = new Date().toISOString();
 
-    if (typeof window !== 'undefined') {
-      window.addEventListener('online', () => this.pump());
-    }
-  }
+  // Save audio blob in Dexie audio table
+  await db.audio.put({
+    job_id: params.job_id,
+    blob: params.audio_blob,
+    created_at: now,
+  });
 
-  async init(): Promise<void> {
-    await db.jobs.where('state').anyOf(['uploading', 'processing']).modify({ state: 'queued' });
-    this.pump();
-  }
+  const job: CaptureJob = {
+    job_id: params.job_id,
+    shop_id: params.shop_id,
+    draft_id: params.draft_id,
+    audio_blob_ref: params.job_id,
+    duration_ms: params.duration_ms,
+    peak_rms: params.peak_rms,
+    clip_ratio: params.clip_ratio,
+    codec: params.codec,
+    captured_at: now,
+    state: 'queued',
+    attempts: 0,
+    result_ref: null,
+  };
 
-  async enqueue(job: CaptureJob, audioBlob: Blob): Promise<void> {
-    await db.audio.put({ job_id: job.job_id, blob: audioBlob });
-    await db.jobs.put(job);
-    this.pump();
-  }
+  await db.jobs.put(job);
+  triggerQueueDrain();
+  return job;
+}
 
-  async pump(): Promise<void> {
-    if (this._running) return;
-    this._running = true;
+export async function triggerQueueDrain(): Promise<void> {
+  if (isProcessingQueue) return;
+  isProcessingQueue = true;
 
-    try {
-      while (this._inFlight.size < MAX_IN_FLIGHT) {
-        const availableSlots = MAX_IN_FLIGHT - this._inFlight.size;
-        const candidates = await db.jobs.where('state').equals('queued').limit(availableSlots).toArray();
-        const pending = candidates.filter((j) => !this._inFlight.has(j.job_id));
-        if (pending.length === 0) break;
+  try {
+    while (inFlightCount < MAX_IN_FLIGHT) {
+      // Find oldest pending job
+      const pendingJob = await db.jobs
+        .where('state')
+        .equals('queued')
+        .sortBy('created_at')
+        .then((jobs) => jobs[0]);
 
-        for (const job of pending) {
-          if (this._inFlight.size >= MAX_IN_FLIGHT) break;
-          this._inFlight.add(job.job_id);
-          this._processJob(job).finally(() => {
-            this._inFlight.delete(job.job_id);
-            this.pump();
-          });
-        }
-      }
-    } finally {
-      this._running = false;
-      this._emitStatus();
-    }
-  }
+      if (!pendingJob) break;
 
-  private async _processJob(job: CaptureJob): Promise<void> {
-    try {
-      await db.jobs.update(job.job_id, { state: 'uploading' });
-      const audioRecord = await db.audio.get(job.job_id);
-      if (!audioRecord || !audioRecord.blob) {
-        await db.jobs.update(job.job_id, { state: 'failed' });
-        return;
-      }
+      // Claim job
+      await db.jobs.update(pendingJob.job_id, { state: 'uploading' });
+      inFlightCount++;
 
-      const draft = await sendUtterance({
-        audioBlob: audioRecord.blob,
-        jobId: job.job_id,
-        shopId: job.shop_id,
-        draftId: job.draft_id,
-        capturedAt: job.captured_at,
-        clientMeta: {
-          codec: job.codec,
-          duration_ms: job.duration_ms,
-          peak_rms: job.peak_rms,
-          clip_ratio: job.clip_ratio,
-        },
+      // Process in background without blocking loop
+      processSingleJob(pendingJob).finally(() => {
+        inFlightCount--;
+        triggerQueueDrain();
       });
-
-      await db.jobs.update(job.job_id, { state: 'done', result_ref: draft.draft_id });
-
-      // Check if an offline manual sale event exists for this job_id waiting for backfill
-      const allEvents = await db.events.toArray();
-      const pendingEvent = allEvents.find(
-        (e) => e.audio_refs?.includes(job.job_id) && e.payload?.pending_backfill === true
-      );
-
-      if (pendingEvent) {
-        await backfillOfflineSale(pendingEvent, draft, job.shop_id);
-        this._onBackfillComplete?.(job.job_id, draft);
-      } else {
-        this._onDraftReceived?.(draft, job.job_id);
-      }
-    } catch (err: unknown) {
-      const attempts = (job.attempts || 0) + 1;
-      const msg = err instanceof Error ? err.message : String(err);
-      if (attempts >= MAX_ATTEMPTS || msg.startsWith('400')) {
-        await db.jobs.update(job.job_id, { state: 'failed', attempts });
-      } else {
-        const backoffMs = Math.min(1000 * Math.pow(2, attempts), 30000);
-        await db.jobs.update(job.job_id, { state: 'queued', attempts });
-        setTimeout(() => this.pump(), backoffMs);
-      }
-      this._onJobDegraded?.(job);
     }
-  }
-
-  private async _emitStatus(): Promise<void> {
-    const queuedCount = await db.jobs.where('state').equals('queued').count();
-    this._onStatusChange?.(this._inFlight.size, queuedCount);
-    if (this._inFlight.size === 0 && queuedCount === 0) {
-      this._onEmpty?.();
-    }
+  } finally {
+    isProcessingQueue = false;
   }
 }
+
+async function processSingleJob(job: CaptureJob): Promise<void> {
+  const audioRecord = await db.audio.get(job.job_id);
+  if (!audioRecord) {
+    await db.jobs.update(job.job_id, { state: 'failed' });
+    return;
+  }
+
+  const formData = new FormData();
+  formData.append('audio', audioRecord.blob, `utterance_${job.job_id}.${job.codec.includes('wav') ? 'wav' : 'webm'}`);
+  formData.append('shop_id', job.shop_id);
+  formData.append('job_id', job.job_id);
+  if (job.draft_id) {
+    formData.append('draft_id', job.draft_id);
+  }
+  formData.append('captured_at', job.captured_at);
+  formData.append(
+    'client_meta',
+    JSON.stringify({
+      codec: job.codec,
+      duration_ms: job.duration_ms,
+      peak_rms: job.peak_rms,
+      clip_ratio: job.clip_ratio,
+    })
+  );
+
+  try {
+    await db.jobs.update(job.job_id, { state: 'processing' });
+    const response = await fetch('/v1/utterance', {
+      method: 'POST',
+      body: formData,
+    });
+
+    if (response.ok) {
+      const parsedDraft: ParsedDraft = await response.json();
+      await db.drafts.put(parsedDraft);
+      await db.jobs.update(job.job_id, {
+        state: 'done',
+        result_ref: parsedDraft.draft_id,
+      });
+
+      // Notify subscribers
+      for (const cb of subscribers) {
+        cb(parsedDraft, job.job_id);
+      }
+    } else {
+      const isClientError = response.status >= 400 && response.status < 500 && response.status !== 409;
+      if (isClientError) {
+        await db.jobs.update(job.job_id, { state: 'failed' });
+      } else {
+        await handleJobRetry(job);
+      }
+    }
+  } catch {
+    // Network failure (offline, airplane mode) -> exponential backoff retry
+    await handleJobRetry(job);
+  }
+}
+
+async function handleJobRetry(job: CaptureJob): Promise<void> {
+  const nextAttempts = job.attempts + 1;
+  const backoffMs = Math.min(30000, 1000 * Math.pow(2, nextAttempts));
+
+  await db.jobs.update(job.job_id, {
+    state: 'queued',
+    attempts: nextAttempts,
+  });
+
+  // Schedule retry after backoff
+  setTimeout(() => {
+    triggerQueueDrain();
+  }, backoffMs);
+}
+

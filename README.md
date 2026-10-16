@@ -24,17 +24,21 @@ Read **AGENTS.md** first. It is the contract for this repository.
 ## Quick start
 
 ```bash
-cp .env.example .env          # then fill in GROQ_API_KEY
+cp .env.example .env          # then fill in GROQ_API_KEY (optional for local offline mode)
 
+# 1. Server
+source /mnt/data/UVCentralVenv/bin/activate
 cd server
-pip install -e ".[dev]" --break-system-packages
-pytest -q
+pytest tests -q
 uvicorn app.main:app --reload --port 8000
 
-cd ../client
+# 2. Client (in a separate terminal)
+cd client
 npm install
 npm run dev
-cloudflared tunnel --url http://localhost:5173   # HTTPS needed for the mic
+
+# 3. Mobile mic access over HTTPS
+cloudflared tunnel --url http://localhost:5173
 ```
 
 Microphone access requires HTTPS. Test on a real Android phone through the

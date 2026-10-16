@@ -1,120 +1,144 @@
-import { db } from '../db';
-import type { ParsedDraft } from '../types';
+/**
+ * Draft basket manager with 20s append window and timer reset.
+ * AGENTS.md rule: 20s draft window, utterances append, large discard control.
+ */
+
+import type { ParsedDraft, LineItem } from '../types';
 
 export const DRAFT_WINDOW_MS = 20000;
 
 export interface DraftState {
   draft: ParsedDraft | null;
-  expiresAt: number | null;
   secondsRemaining: number;
 }
 
-export type DraftChangeCallback = (state: DraftState) => void;
+export type DraftListener = (state: DraftState) => void;
 
-export class DraftManager {
-  private _draft: ParsedDraft | null = null;
-  private _expiresAt: number | null = null;
-  private _timerId: number | null = null;
-  private _onDraftChange?: DraftChangeCallback;
-  private _onWindowExpired?: (draft: ParsedDraft) => void;
+class DraftManager {
+  private currentDraft: ParsedDraft | null = null;
+  private timerId: ReturnType<typeof setTimeout> | null = null;
+  private intervalId: ReturnType<typeof setInterval> | null = null;
+  private expiresAt: number = 0;
+  private listeners = new Set<DraftListener>();
+  private onAutoCommitCallback: ((draft: ParsedDraft) => void) | null = null;
 
-  constructor(handlers?: {
-    onDraftChange?: DraftChangeCallback;
-    onWindowExpired?: (draft: ParsedDraft) => void;
-  }) {
-    this._onDraftChange = handlers?.onDraftChange;
-    this._onWindowExpired = handlers?.onWindowExpired;
+  public setAutoCommitHandler(handler: (draft: ParsedDraft) => void): void {
+    this.onAutoCommitCallback = handler;
   }
 
-  get activeDraft(): ParsedDraft | null {
-    return this._draft;
+  public subscribe(listener: DraftListener): () => void {
+    this.listeners.add(listener);
+    listener(this.getState());
+    return () => this.listeners.delete(listener);
   }
 
-  get draftId(): string | null {
-    return this._draft ? this._draft.draft_id : null;
+  public getCurrentDraft(): ParsedDraft | null {
+    return this.currentDraft;
   }
 
-  updateWithUtterance(incomingDraft: ParsedDraft): void {
-    if (!this._draft || this._draft.draft_id !== incomingDraft.draft_id) {
-      // New draft opened
-      this._draft = incomingDraft;
-    } else {
-      // Appended to existing open draft
-      this._draft = incomingDraft;
+  public getDraftId(): string | null {
+    return this.currentDraft ? this.currentDraft.draft_id : null;
+  }
+
+  public handleIncomingDraft(incoming: ParsedDraft): void {
+    if (!this.currentDraft) {
+      // First utterance starts new draft basket
+      this.currentDraft = incoming;
+      this.resetTimer();
+      return;
     }
 
-    this._expiresAt = Date.now() + DRAFT_WINDOW_MS;
-    this._persist(this._draft);
-    this._startTimer();
-    this._notify();
-  }
+    // Merge incoming utterance items into open draft
+    const mergedItems: LineItem[] = [...this.currentDraft.items, ...incoming.items];
+    const computedTotal = mergedItems.reduce(
+      (sum, item) => sum + (item.line_total != null ? Math.round(item.line_total) : 0),
+      0
+    );
 
-  discard(): void {
-    if (this._draft) {
-      db.drafts.delete(this._draft.draft_id).catch(() => {});
-    }
-    this._clear();
-  }
-
-  commitDone(): void {
-    if (this._draft) {
-      db.drafts.delete(this._draft.draft_id).catch(() => {});
-    }
-    this._clear();
-  }
-
-  private _clear(): void {
-    if (this._timerId !== null) {
-      clearInterval(this._timerId);
-      this._timerId = null;
-    }
-    this._draft = null;
-    this._expiresAt = null;
-    this._notify();
-  }
-
-  private _startTimer(): void {
-    if (this._timerId !== null) {
-      clearInterval(this._timerId);
+    // Prefer resolved customer over absent/provisional
+    let resolvedCustomer = this.currentDraft.customer;
+    if (incoming.customer.status === 'resolved' || resolvedCustomer.status === 'absent') {
+      resolvedCustomer = incoming.customer;
     }
 
-    this._timerId = window.setInterval(() => {
-      if (!this._expiresAt || !this._draft) {
-        this._clear();
-        return;
-      }
+    const mergedDraft: ParsedDraft = {
+      ...this.currentDraft,
+      job_ids: Array.from(new Set([...this.currentDraft.job_ids, ...incoming.job_ids])),
+      customer: resolvedCustomer,
+      items: mergedItems,
+      computed_total: computedTotal,
+      confidence: Math.min(this.currentDraft.confidence, incoming.confidence),
+      validation: incoming.validation,
+      order_form: incoming.order_form,
+    };
 
-      const diff = this._expiresAt - Date.now();
-      if (diff <= 0) {
-        const expiredDraft = this._draft;
-        this._clear();
-        this._onWindowExpired?.(expiredDraft);
-      } else {
-        this._notify();
-      }
-    }, 200);
+    this.currentDraft = mergedDraft;
+    this.resetTimer();
   }
 
-  private _notify(): void {
-    const secondsRemaining = this._expiresAt
-      ? Math.max(0, Math.ceil((this._expiresAt - Date.now()) / 1000))
-      : 0;
-
-    this._onDraftChange?.({
-      draft: this._draft,
-      expiresAt: this._expiresAt,
-      secondsRemaining,
-    });
+  public discard(): void {
+    this.clearTimer();
+    this.currentDraft = null;
+    this.notify();
   }
 
-  private _persist(draft: ParsedDraft): void {
-    db.drafts
-      .put({
-        draft_id: draft.draft_id,
-        customer_id: draft.customer.customer_id,
-        opened_at: new Date().toISOString(),
-        data: draft,
-      })
-      .catch(() => {});
+  public commitNow(): ParsedDraft | null {
+    const draft = this.currentDraft;
+    this.clearTimer();
+    this.currentDraft = null;
+    this.notify();
+    return draft;
+  }
+
+  private resetTimer(): void {
+    this.clearTimer();
+    this.expiresAt = Date.now() + DRAFT_WINDOW_MS;
+
+    this.intervalId = setInterval(() => {
+      this.notify();
+    }, 500);
+
+    this.timerId = setTimeout(() => {
+      this.handleTimeout();
+    }, DRAFT_WINDOW_MS);
+
+    this.notify();
+  }
+
+  private handleTimeout(): void {
+    const draft = this.currentDraft;
+    this.clearTimer();
+    this.currentDraft = null;
+    this.notify();
+
+    if (draft && this.onAutoCommitCallback) {
+      this.onAutoCommitCallback(draft);
+    }
+  }
+
+  private clearTimer(): void {
+    if (this.timerId) clearTimeout(this.timerId);
+    if (this.intervalId) clearInterval(this.intervalId);
+    this.timerId = null;
+    this.intervalId = null;
+    this.expiresAt = 0;
+  }
+
+  private getState(): DraftState {
+    const remaining = Math.max(0, Math.ceil((this.expiresAt - Date.now()) / 1000));
+    return {
+      draft: this.currentDraft,
+      secondsRemaining: this.expiresAt > 0 ? remaining : 0,
+    };
+  }
+
+  private notify(): void {
+    const state = this.getState();
+    for (const listener of this.listeners) {
+      listener(state);
+    }
   }
 }
+
+export const draftManager = new DraftManager();
+

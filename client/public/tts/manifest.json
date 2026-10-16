@@ -1,0 +1,439 @@
+{
+  "voice": {
+    "name": "ur-PK-UzmaNeural",
+    "lang": "ur-PK"
+  },
+  "chimes": {
+    "chime_success": "chimes/chime_success.wav",
+    "chime_review": "chimes/chime_review.wav",
+    "chime_error": "chimes/chime_error.wav"
+  },
+  "fragments": {
+    "num_0": {
+      "category": "cardinals",
+      "text": "صفر",
+      "path": "cardinals/num_0.mp3",
+      "status": "generated"
+    },
+    "num_1": {
+      "category": "cardinals",
+      "text": "ایک",
+      "path": "cardinals/num_1.mp3",
+      "status": "generated"
+    },
+    "num_2": {
+      "category": "cardinals",
+      "text": "دو",
+      "path": "cardinals/num_2.mp3",
+      "status": "generated"
+    },
+    "num_3": {
+      "category": "cardinals",
+      "text": "تین",
+      "path": "cardinals/num_3.mp3",
+      "status": "generated"
+    },
+    "num_4": {
+      "category": "cardinals",
+      "text": "چار",
+      "path": "cardinals/num_4.mp3",
+      "status": "generated"
+    },
+    "num_5": {
+      "category": "cardinals",
+      "text": "پانچ",
+      "path": "cardinals/num_5.mp3",
+      "status": "generated"
+    },
+    "num_6": {
+      "category": "cardinals",
+      "text": "چھ",
+      "path": "cardinals/num_6.mp3",
+      "status": "generated"
+    },
+    "num_7": {
+      "category": "cardinals",
+      "text": "سات",
+      "path": "cardinals/num_7.mp3",
+      "status": "generated"
+    },
+    "num_8": {
+      "category": "cardinals",
+      "text": "آٹھ",
+      "path": "cardinals/num_8.mp3",
+      "status": "generated"
+    },
+    "num_9": {
+      "category": "cardinals",
+      "text": "نو",
+      "path": "cardinals/num_9.mp3",
+      "status": "generated"
+    },
+    "num_10": {
+      "category": "cardinals",
+      "text": "دس",
+      "path": "cardinals/num_10.mp3",
+      "status": "generated"
+    },
+    "num_11": {
+      "category": "cardinals",
+      "text": "گیارہ",
+      "path": "cardinals/num_11.mp3",
+      "status": "generated"
+    },
+    "num_12": {
+      "category": "cardinals",
+      "text": "بارہ",
+      "path": "cardinals/num_12.mp3",
+      "status": "generated"
+    },
+    "num_13": {
+      "category": "cardinals",
+      "text": "تیرہ",
+      "path": "cardinals/num_13.mp3",
+      "status": "generated"
+    },
+    "num_14": {
+      "category": "cardinals",
+      "text": "چودہ",
+      "path": "cardinals/num_14.mp3",
+      "status": "generated"
+    },
+    "num_15": {
+      "category": "cardinals",
+      "text": "پندرہ",
+      "path": "cardinals/num_15.mp3",
+      "status": "generated"
+    },
+    "num_16": {
+      "category": "cardinals",
+      "text": "سولہ",
+      "path": "cardinals/num_16.mp3",
+      "status": "generated"
+    },
+    "num_17": {
+      "category": "cardinals",
+      "text": "سترہ",
+      "path": "cardinals/num_17.mp3",
+      "status": "generated"
+    },
+    "num_18": {
+      "category": "cardinals",
+      "text": "اٹھارہ",
+      "path": "cardinals/num_18.mp3",
+      "status": "generated"
+    },
+    "num_19": {
+      "category": "cardinals",
+      "text": "انیس",
+      "path": "cardinals/num_19.mp3",
+      "status": "generated"
+    },
+    "num_20": {
+      "category": "cardinals",
+      "text": "بیس",
+      "path": "cardinals/num_20.mp3",
+      "status": "generated"
+    },
+    "num_21": {
+      "category": "cardinals",
+      "text": "اکیس",
+      "path": "cardinals/num_21.mp3",
+      "status": "generated"
+    },
+    "num_22": {
+      "category": "cardinals",
+      "text": "بائیس",
+      "path": "cardinals/num_22.mp3",
+      "status": "generated"
+    },
+    "num_23": {
+      "category": "cardinals",
+      "text": "تئیس",
+      "path": "cardinals/num_23.mp3",
+      "status": "generated"
+    },
+    "num_24": {
+      "category": "cardinals",
+      "text": "چوبیس",
+      "path": "cardinals/num_24.mp3",
+      "status": "generated"
+    },
+    "num_25": {
+      "category": "cardinals",
+      "text": "پچیس",
+      "path": "cardinals/num_25.mp3",
+      "status": "generated"
+    },
+    "num_26": {
+      "category": "cardinals",
+      "text": "چھببیس",
+      "path": "cardinals/num_26.mp3",
+      "status": "generated"
+    },
+    "num_27": {
+      "category": "cardinals",
+      "text": "ستائیس",
+      "path": "cardinals/num_27.mp3",
+      "status": "generated"
+    },
+    "num_28": {
+      "category": "cardinals",
+      "text": "اٹھائیس",
+      "path": "cardinals/num_28.mp3",
+      "status": "generated"
+    },
+    "num_29": {
+      "category": "cardinals",
+      "text": "انتیس",
+      "path": "cardinals/num_29.mp3",
+      "status": "generated"
+    },
+    "num_30": {
+      "category": "cardinals",
+      "text": "تیس",
+      "path": "cardinals/num_30.mp3",
+      "status": "generated"
+    },
+    "num_35": {
+      "category": "cardinals",
+      "text": "پینتیس",
+      "path": "cardinals/num_35.mp3",
+      "status": "generated"
+    },
+    "num_40": {
+      "category": "cardinals",
+      "text": "چالیس",
+      "path": "cardinals/num_40.mp3",
+      "status": "generated"
+    },
+    "num_45": {
+      "category": "cardinals",
+      "text": "پینتالیس",
+      "path": "cardinals/num_45.mp3",
+      "status": "generated"
+    },
+    "num_50": {
+      "category": "cardinals",
+      "text": "پچاس",
+      "path": "cardinals/num_50.mp3",
+      "status": "generated"
+    },
+    "num_55": {
+      "category": "cardinals",
+      "text": "پچپن",
+      "path": "cardinals/num_55.mp3",
+      "status": "generated"
+    },
+    "num_60": {
+      "category": "cardinals",
+      "text": "ساٹھ",
+      "path": "cardinals/num_60.mp3",
+      "status": "generated"
+    },
+    "num_65": {
+      "category": "cardinals",
+      "text": "پینسٹھ",
+      "path": "cardinals/num_65.mp3",
+      "status": "generated"
+    },
+    "num_70": {
+      "category": "cardinals",
+      "text": "ستر",
+      "path": "cardinals/num_70.mp3",
+      "status": "generated"
+    },
+    "num_75": {
+      "category": "cardinals",
+      "text": "پچہتر",
+      "path": "cardinals/num_75.mp3",
+      "status": "generated"
+    },
+    "num_80": {
+      "category": "cardinals",
+      "text": "اسی",
+      "path": "cardinals/num_80.mp3",
+      "status": "generated"
+    },
+    "num_85": {
+      "category": "cardinals",
+      "text": "پچاسی",
+      "path": "cardinals/num_85.mp3",
+      "status": "generated"
+    },
+    "num_90": {
+      "category": "cardinals",
+      "text": "نوے",
+      "path": "cardinals/num_90.mp3",
+      "status": "generated"
+    },
+    "num_95": {
+      "category": "cardinals",
+      "text": "پچانوے",
+      "path": "cardinals/num_95.mp3",
+      "status": "generated"
+    },
+    "num_99": {
+      "category": "cardinals",
+      "text": "نانوے",
+      "path": "cardinals/num_99.mp3",
+      "status": "generated"
+    },
+    "mult_100": {
+      "category": "multipliers",
+      "text": "سو",
+      "path": "multipliers/mult_100.mp3",
+      "status": "generated"
+    },
+    "mult_1000": {
+      "category": "multipliers",
+      "text": "ہزار",
+      "path": "multipliers/mult_1000.mp3",
+      "status": "generated"
+    },
+    "mult_100000": {
+      "category": "multipliers",
+      "text": "لاکھ",
+      "path": "multipliers/mult_100000.mp3",
+      "status": "generated"
+    },
+    "frac_aadha": {
+      "category": "fractions",
+      "text": "آدھا",
+      "path": "fractions/frac_aadha.mp3",
+      "status": "generated"
+    },
+    "frac_paw": {
+      "category": "fractions",
+      "text": "پاؤ",
+      "path": "fractions/frac_paw.mp3",
+      "status": "generated"
+    },
+    "frac_derh": {
+      "category": "fractions",
+      "text": "ڈیڑھ",
+      "path": "fractions/frac_derh.mp3",
+      "status": "generated"
+    },
+    "frac_dhai": {
+      "category": "fractions",
+      "text": "ڈھائی",
+      "path": "fractions/frac_dhai.mp3",
+      "status": "generated"
+    },
+    "frac_sawa": {
+      "category": "fractions",
+      "text": "سوا",
+      "path": "fractions/frac_sawa.mp3",
+      "status": "generated"
+    },
+    "frac_saarhe": {
+      "category": "fractions",
+      "text": "ساڑھے",
+      "path": "fractions/frac_saarhe.mp3",
+      "status": "generated"
+    },
+    "frac_paun": {
+      "category": "fractions",
+      "text": "پونے",
+      "path": "fractions/frac_paun.mp3",
+      "status": "generated"
+    },
+    "unit_kg": {
+      "category": "units",
+      "text": "کلو",
+      "path": "units/unit_kg.mp3",
+      "status": "generated"
+    },
+    "unit_g": {
+      "category": "units",
+      "text": "گرام",
+      "path": "units/unit_g.mp3",
+      "status": "generated"
+    },
+    "unit_l": {
+      "category": "units",
+      "text": "لیٹر",
+      "path": "units/unit_l.mp3",
+      "status": "generated"
+    },
+    "unit_ml": {
+      "category": "units",
+      "text": "ملی لیٹر",
+      "path": "units/unit_ml.mp3",
+      "status": "generated"
+    },
+    "unit_dozen": {
+      "category": "units",
+      "text": "درجن",
+      "path": "units/unit_dozen.mp3",
+      "status": "generated"
+    },
+    "unit_packet": {
+      "category": "units",
+      "text": "پیکٹ",
+      "path": "units/unit_packet.mp3",
+      "status": "generated"
+    },
+    "unit_bottle": {
+      "category": "units",
+      "text": "بوتل",
+      "path": "units/unit_bottle.mp3",
+      "status": "generated"
+    },
+    "unit_box": {
+      "category": "units",
+      "text": "ڈبہ",
+      "path": "units/unit_box.mp3",
+      "status": "generated"
+    },
+    "unit_piece": {
+      "category": "units",
+      "text": "عدد",
+      "path": "units/unit_piece.mp3",
+      "status": "generated"
+    },
+    "frame_ka_hisaab": {
+      "category": "frames",
+      "text": "کا حساب",
+      "path": "frames/frame_ka_hisaab.mp3",
+      "status": "generated"
+    },
+    "frame_kul_raqam": {
+      "category": "frames",
+      "text": "کل رقم",
+      "path": "frames/frame_kul_raqam.mp3",
+      "status": "generated"
+    },
+    "frame_rupay": {
+      "category": "frames",
+      "text": "روپے",
+      "path": "frames/frame_rupay.mp3",
+      "status": "generated"
+    },
+    "frame_udhaar": {
+      "category": "frames",
+      "text": "ادھار",
+      "path": "frames/frame_udhaar.mp3",
+      "status": "generated"
+    },
+    "frame_naqd": {
+      "category": "frames",
+      "text": "نقد",
+      "path": "frames/frame_naqd.mp3",
+      "status": "generated"
+    },
+    "frame_wasooli": {
+      "category": "frames",
+      "text": "وصولی",
+      "path": "frames/frame_wasooli.mp3",
+      "status": "generated"
+    },
+    "frame_baaqi": {
+      "category": "frames",
+      "text": "باقی",
+      "path": "frames/frame_baaqi.mp3",
+      "status": "generated"
+    }
+  }
+}

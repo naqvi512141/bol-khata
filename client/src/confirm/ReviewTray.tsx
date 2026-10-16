@@ -1,194 +1,139 @@
+/**
+ * Review Tray modal/drawer for blocking or low-confidence drafts.
+ * AGENTS.md rule: Ambiguous customer identity is always blocking. Never auto-select.
+ */
+
 import { useState } from 'react';
 import type { ParsedDraft } from '../types';
-import { ItemRow } from './ItemRow';
+import { ConfidenceBadge } from './ConfidenceBadge';
 
 interface ReviewTrayProps {
-  heldDrafts: ParsedDraft[];
+  drafts: ParsedDraft[];
   isOpen: boolean;
   onClose: () => void;
-  onCommitDraft: (draft: ParsedDraft) => void;
-  onRejectDraft: (draftId: string) => void;
+  onResolveAndCommit: (draft: ParsedDraft, resolvedCustomerId?: string) => void;
+  onDiscardDraft: (draftId: string) => void;
 }
 
 export function ReviewTray({
-  heldDrafts,
+  drafts,
   isOpen,
   onClose,
-  onCommitDraft,
-  onRejectDraft,
+  onResolveAndCommit,
+  onDiscardDraft,
 }: ReviewTrayProps) {
-  const [selectedDraftId, setSelectedDraftId] = useState<string | null>(null);
-  const [editedDrafts, setEditedDrafts] = useState<Record<string, ParsedDraft>>({});
+  const [selectedCustomerMap, setSelectedCustomerMap] = useState<Record<string, string>>({});
 
   if (!isOpen) return null;
 
-  const activeId = selectedDraftId || heldDrafts[0]?.draft_id;
-  const current = editedDrafts[activeId] || heldDrafts.find((d) => d.draft_id === activeId);
-
-  const handlePriceUpdate = (itemIdx: number, newPrice: number) => {
-    if (!current) return;
-    const newItems = [...current.items];
-    newItems[itemIdx] = {
-      ...newItems[itemIdx],
-      line_total: newPrice,
-      price_source: 'spoken',
-    };
-    const newTotal = newItems.reduce((acc, it) => acc + (it.line_total || 0), 0);
-    const newBlocking = current.validation.blocking.filter(
-      (b) => !(b.rule === 'V7' && (b.item_index === itemIdx || b.item_index === null))
-    );
-
-    const updated: ParsedDraft = {
-      ...current,
-      items: newItems,
-      computed_total: newTotal,
-      validation: {
-        ...current.validation,
-        blocking: newBlocking,
-        passed: newBlocking.length === 0,
-      },
-    };
-    setEditedDrafts((prev) => ({ ...prev, [current.draft_id]: updated }));
-  };
-
-  const handleSelectCustomer = (cand: string) => {
-    if (!current) return;
-    const newBlocking = current.validation.blocking.filter((b) => b.rule !== 'V6');
-    const updated: ParsedDraft = {
-      ...current,
-      customer: {
-        ...current.customer,
-        raw_name: cand,
-        status: 'resolved',
-      },
-      validation: {
-        ...current.validation,
-        blocking: newBlocking,
-        passed: newBlocking.length === 0,
-      },
-    };
-    setEditedDrafts((prev) => ({ ...prev, [current.draft_id]: updated }));
-  };
-
   return (
-    <div className="fixed inset-0 z-50 bg-black/80 backdrop-blur-sm flex items-center justify-center p-4">
-      <div className="bg-gray-900 border border-gray-700 w-full max-w-lg rounded-2xl p-5 shadow-2xl space-y-4 max-h-[90vh] flex flex-col animate-scaleUp">
+    <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-black/70 backdrop-blur-sm p-3">
+      <div className="bg-gray-900 border border-gray-800 rounded-3xl w-full max-w-lg max-h-[85vh] flex flex-col overflow-hidden shadow-2xl">
         {/* Header */}
-        <div className="flex items-center justify-between border-b border-gray-800 pb-3">
+        <div className="flex items-center justify-between p-4 border-b border-gray-800">
           <div className="flex items-center gap-2">
-            <span className="font-nastaliq text-xl text-amber-400 font-bold">نظرثانی ٹرے</span>
-            <span className="bg-amber-600 text-white text-xs px-2 py-0.5 rounded-full ltr-nums font-bold">
-              {heldDrafts.length}
+            <h2 className="font-nastaliq text-xl text-yellow-400">جائزہ ٹرے (Review Tray)</h2>
+            <span className="text-xs bg-yellow-900/60 text-yellow-300 px-2 py-0.5 rounded-full ltr-nums">
+              {drafts.length}
             </span>
           </div>
           <button
-            type="button"
             onClick={onClose}
-            className="text-gray-400 hover:text-white text-lg font-bold p-1"
+            className="p-1.5 rounded-lg text-gray-400 hover:text-white hover:bg-gray-800"
           >
             ✕
           </button>
         </div>
 
-        {/* Drafts selector if multiple */}
-        {heldDrafts.length > 1 && (
-          <div className="flex gap-2 overflow-x-auto pb-1">
-            {heldDrafts.map((d, i) => (
-              <button
-                key={d.draft_id}
-                type="button"
-                onClick={() => setSelectedDraftId(d.draft_id)}
-                className={`px-3 py-1 text-xs rounded-lg font-nastaliq whitespace-nowrap transition-all ${
-                  d.draft_id === activeId
-                    ? 'bg-amber-600 text-white font-bold'
-                    : 'bg-gray-800 text-gray-300 hover:bg-gray-700'
-                }`}
-              >
-                مسودہ #{i + 1} ({d.customer.raw_name ?? 'نقد'})
-              </button>
-            ))}
-          </div>
-        )}
+        {/* Content list */}
+        <div className="p-4 overflow-y-auto space-y-4">
+          {drafts.length === 0 ? (
+            <p className="text-center py-8 text-gray-500 font-nastaliq">کوئی زیرِ جائزہ ڈرافٹ نہیں</p>
+          ) : (
+            drafts.map((d) => {
+              const cust = d.customer;
+              const isAmbiguous = cust.status === 'ambiguous';
 
-        {/* Active Draft Details */}
-        {current ? (
-          <div className="flex-1 overflow-y-auto space-y-4 pr-1">
-            {/* Customer ambiguity disambiguation (V6) */}
-            {current.customer.status !== 'resolved' && current.customer.status !== 'absent' && (
-              <div className="bg-amber-950/70 border border-amber-700 rounded-xl p-3 space-y-2">
-                <span className="font-nastaliq text-xs text-amber-300 block font-semibold">
-                  گاہک کے نام میں ابہام (درست نام منتخب کریں):
-                </span>
-                <div className="flex flex-wrap gap-2">
-                  {(current.customer.candidates.length > 0
-                    ? current.customer.candidates
-                    : ['احمد', 'احمد علی', 'بلال', 'عمران', 'نقد']
-                  ).map((cand) => (
+              return (
+                <div key={d.draft_id} className="bg-gray-850 border border-gray-750 rounded-2xl p-4 space-y-3">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <span className="font-nastaliq text-lg font-semibold text-white">
+                        {cust.raw_name || 'نامعلوم گاہک'}
+                      </span>
+                      {isAmbiguous && (
+                        <span className="mr-2 text-xs bg-red-900/60 text-red-300 border border-red-700/60 px-2 py-0.5 rounded-full font-nastaliq">
+                          مبہم گاہک
+                        </span>
+                      )}
+                    </div>
+                    <ConfidenceBadge confidence={d.confidence} />
+                  </div>
+
+                  {/* Ambiguous candidates selector */}
+                  {isAmbiguous && cust.candidates.length > 0 && (
+                    <div className="space-y-1.5 bg-gray-900/80 p-2.5 rounded-xl border border-yellow-700/40">
+                      <p className="text-xs text-yellow-300 font-nastaliq">صحیح گاہک منتخب کریں:</p>
+                      <div className="flex flex-wrap gap-2">
+                        {cust.candidates.map((cid) => (
+                          <button
+                            key={cid}
+                            type="button"
+                            onClick={() => setSelectedCustomerMap((prev) => ({ ...prev, [d.draft_id]: cid }))}
+                            className={`px-3 py-1 rounded-lg text-xs font-nastaliq transition-all ${
+                              selectedCustomerMap[d.draft_id] === cid
+                                ? 'bg-emerald-600 text-white font-semibold'
+                                : 'bg-gray-800 text-gray-300 hover:bg-gray-700'
+                            }`}
+                          >
+                            {cid}
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Validation Issues list */}
+                  {d.validation.blocking.length > 0 && (
+                    <div className="space-y-1">
+                      {d.validation.blocking.map((iss, i) => (
+                        <div key={i} className="text-xs bg-red-950/60 border border-red-900 text-red-300 px-2 py-1 rounded-md">
+                          <span className="font-mono font-bold ltr-nums">{iss.rule}</span>: {iss.message}
+                        </div>
+                      ))}
+                    </div>
+                  )}
+
+                  {/* Items summary */}
+                  <div className="text-xs text-gray-400 border-t border-gray-800 pt-2 flex justify-between items-center">
+                    <span>{d.items.length} آئٹمز</span>
+                    <span className="ltr-nums font-bold text-emerald-400 text-base">₨{d.computed_total}</span>
+                  </div>
+
+                  {/* Action buttons */}
+                  <div className="grid grid-cols-2 gap-2 pt-1">
                     <button
-                      key={cand}
                       type="button"
-                      onClick={() => handleSelectCustomer(cand)}
-                      className="px-3 py-1 rounded-lg bg-gray-800 hover:bg-amber-700 text-white text-xs font-nastaliq border border-gray-600 active:scale-95 transition-all"
+                      onClick={() => onDiscardDraft(d.draft_id)}
+                      className="py-1.5 rounded-lg bg-gray-800 hover:bg-red-900/50 text-red-400 text-xs font-nastaliq border border-gray-700"
                     >
-                      {cand}
+                      مسترد کریں
                     </button>
-                  ))}
+                    <button
+                      type="button"
+                      onClick={() => onResolveAndCommit(d, selectedCustomerMap[d.draft_id])}
+                      className="py-1.5 rounded-lg bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-nastaliq font-semibold shadow"
+                    >
+                      تصدیق و اندراج
+                    </button>
+                  </div>
                 </div>
-              </div>
-            )}
-
-            {/* Items with field highlights */}
-            <div className="space-y-1">
-              {current.items.map((it, idx) => (
-                <ItemRow
-                  key={idx}
-                  item={it}
-                  itemIndex={idx}
-                  validation={current.validation}
-                  onUpdatePrice={handlePriceUpdate}
-                />
-              ))}
-            </div>
-
-            {/* Total */}
-            <div className="flex items-center justify-between pt-2 border-t border-gray-800">
-              <span className="font-nastaliq text-sm text-gray-400">کل رقم</span>
-              <span className="ltr-nums text-xl font-bold text-emerald-400">
-                ₨{current.computed_total}
-              </span>
-            </div>
-          </div>
-        ) : (
-          <div className="text-center py-8 text-gray-500 font-nastaliq">
-            نظرثانی کے لیے کوئی مسودہ نہیں ہے
-          </div>
-        )}
-
-        {/* Action buttons */}
-        {current && (
-          <div className="grid grid-cols-2 gap-3 pt-3 border-t border-gray-800">
-            <button
-              type="button"
-              onClick={() => onRejectDraft(current.draft_id)}
-              className="py-2.5 rounded-xl font-nastaliq text-xs font-bold bg-red-950/80 hover:bg-red-900 border border-red-700 text-red-200 active:scale-95 transition-all"
-            >
-              مسترد کریں
-            </button>
-            <button
-              type="button"
-              disabled={current.validation.blocking.length > 0}
-              onClick={() => onCommitDraft(current)}
-              className={`py-2.5 rounded-xl font-nastaliq text-xs font-bold text-white shadow-md active:scale-95 transition-all ${
-                current.validation.blocking.length > 0
-                  ? 'bg-gray-700 text-gray-400 cursor-not-allowed'
-                  : 'bg-emerald-600 hover:bg-emerald-500 shadow-emerald-700/50'
-              }`}
-            >
-              تصدیق اور کھاتے میں اندراج
-            </button>
-          </div>
-        )}
+              );
+            })
+          )}
+        </div>
       </div>
     </div>
   );
 }
+
