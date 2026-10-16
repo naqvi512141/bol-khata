@@ -59,6 +59,14 @@ export interface ParsedDraft {
   confidence: number;
   path: 'fast' | 'llm' | 'manual';
   validation: ValidationResult;
+  idempotent_replay?: boolean;
+  asr_engine?: string;
+}
+
+export interface UtteranceResponse extends ParsedDraft {
+  asr_engine: string;
+  failover_reason: string | null;
+  idempotent_replay: boolean;
 }
 
 // ---------- client-only ----------
@@ -73,6 +81,7 @@ export interface CaptureJob {
   clip_ratio: number;
   codec: string;
   captured_at: string;
+  created_at?: string;
   state: 'queued' | 'uploading' | 'processing' | 'done' | 'failed';
   attempts: number;
   result_ref: string | null;
