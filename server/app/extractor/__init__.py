@@ -156,7 +156,7 @@ def extract(
         + 0.10 * 0.80
         + 0.15 * val_score
     )
-    conf = round(base_conf * ORDER_PENALTY.get(order_form, 1.0), 3)
+    conf = max(0.0, min(1.0, round(base_conf * ORDER_PENALTY.get(order_form, 1.0), 3)))
 
     # Computed total in integer PKR (AGENTS.md rule 1)
     computed_total = sum(

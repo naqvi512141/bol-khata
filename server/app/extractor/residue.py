@@ -182,7 +182,7 @@ def attribute_residue(
             customer_id=c_id,
             raw_name=text,
             status="resolved" if status == "resolved" else ("ambiguous" if status == "ambiguous" else "unknown"),
-            confidence=score / 100.0 if score else 0.0,
+            confidence=max(0.0, min(1.0, score / 100.0)) if score else 0.0,
             candidates=cand_ids,
             source="spoken",
         )

@@ -84,7 +84,10 @@ def scan_customer_ngrams(
     max_span = min(3, num_tokens)
     for n in range(max_span, 0, -1):
         for i in range(num_tokens - n + 1):
-            if any(labels[i : i + n]):
+            span_labels = labels[i : i + n]
+            if any(lab is not None and lab != "HONORIFIC" for lab in span_labels):
+                continue
+            if not any(lab is None for lab in span_labels):
                 continue
 
             span_text = " ".join(tokens[i : i + n])

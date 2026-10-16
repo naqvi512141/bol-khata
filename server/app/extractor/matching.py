@@ -39,6 +39,9 @@ class MatchResult:
     raw_name: str = ""
     display_name: str | None = None
 
+    def __post_init__(self) -> None:
+        self.score = max(0.0, min(100.0, float(self.score)))
+
     @property
     def sku_id(self) -> str | None:
         """Alias target_id for SKU matches."""
@@ -68,9 +71,13 @@ def match_sku(query: str, catalogue: list[SKU]) -> MatchResult:
     """Match a token span against the catalogue with threshold + margin check.
 
     Per docs/02-contracts.md §4 & AGENTS.md rule 8:
-      - Top score >= 88 and >= 8 points clear of runner-up -> resolved
-      - Score >= 70 but margin < 8 -> ambiguous
-      - Score < 70 -> unknown
+      - Ranking uses boosted scores (priors break ties).
+      - Acceptance strictly requires RAW pre-prior score >= SKU_ACCEPT_SCORE (88).
+      - Top raw score >= 88 and margin >= 8 points clear of runner-up -> resolved
+      - Top raw score >= 70 but margin < 8 -> ambiguous
+      - Top raw score < 70 -> unknown
+      - Margin check compares candidates on the same score basis (boosted vs boosted).
+      - Reported score is clamped to [0.0, 100.0].
     """
     folded_query = urdu_fold(query).strip()
     if not folded_query:
@@ -78,50 +85,54 @@ def match_sku(query: str, catalogue: list[SKU]) -> MatchResult:
             status="unknown", target_id=None, score=0.0, margin=0.0, raw_name=query
         )
 
-    scored: list[tuple[float, SKU]] = []
+    scored: list[tuple[float, float, SKU]] = []
     for sku in catalogue:
         names_to_check = [sku.display_name] + sku.aliases
         best_sim = max(
             _score_similarity(folded_query, urdu_fold(name).strip())
             for name in names_to_check
         )
-        score = float(best_sim)
-        # Frequency prior applies only if candidate is plausible
-        if score >= SKU_AMBIGUOUS_MIN:
-            sale_count = len(sku.price_history)
-            if sale_count > 0:
-                score *= 1.0 + SKU_FREQ_PRIOR * math.log1p(sale_count)
-        scored.append((score, sku))
+        raw_score = float(best_sim)
+        boosted_score = raw_score
+        sale_count = len(sku.price_history)
+        if sale_count > 0:
+            boosted_score *= 1.0 + SKU_FREQ_PRIOR * math.log1p(sale_count)
+        scored.append((boosted_score, raw_score, sku))
 
-    scored.sort(key=lambda x: x[0], reverse=True)
+    scored.sort(key=lambda x: (x[0], x[1]), reverse=True)
 
     if not scored:
         return MatchResult(
             status="unknown", target_id=None, score=0.0, margin=0.0, raw_name=query
         )
 
-    s1, top_sku = scored[0]
-    s2 = scored[1][0] if len(scored) > 1 else 0.0
-    margin = s1 - s2
+    s1_boosted, s1_raw, top_sku = scored[0]
+    s2_boosted, s2_raw = (scored[1][0], scored[1][1]) if len(scored) > 1 else (0.0, 0.0)
+    raw_margin = s1_raw - s2_raw
+    boosted_margin = s1_boosted - s2_boosted
+    margin = min(raw_margin, boosted_margin)
 
-    if s1 >= SKU_ACCEPT_SCORE and margin >= SKU_MARGIN:
+    reported_score = max(0.0, min(100.0, s1_boosted))
+
+    # Accept decision requires RAW pre-prior score to meet threshold and BOTH margins to pass
+    if s1_raw >= SKU_ACCEPT_SCORE and raw_margin >= SKU_MARGIN and boosted_margin >= SKU_MARGIN:
         return MatchResult(
             status="resolved",
             target_id=top_sku.sku_id,
-            score=s1,
+            score=reported_score,
             margin=margin,
             candidates=[top_sku.sku_id],
             raw_name=query,
             display_name=top_sku.display_name,
         )
-    elif s1 >= SKU_AMBIGUOUS_MIN:
+    elif s1_raw >= SKU_AMBIGUOUS_MIN:
         ambiguous_candidates = [
-            sku.sku_id for s, sku in scored if s >= SKU_AMBIGUOUS_MIN
+            sku.sku_id for _, raw, sku in scored if raw >= SKU_AMBIGUOUS_MIN
         ]
         return MatchResult(
             status="ambiguous",
             target_id=None,
-            score=s1,
+            score=reported_score,
             margin=margin,
             candidates=ambiguous_candidates,
             raw_name=query,
@@ -131,19 +142,42 @@ def match_sku(query: str, catalogue: list[SKU]) -> MatchResult:
         return MatchResult(
             status="unknown",
             target_id=None,
-            score=s1,
+            score=reported_score,
             margin=margin,
             raw_name=query,
         )
+
+
+def _compute_customer_boost(cust: Customer) -> float:
+    """Compute prior multiplier for a customer based on balance and recency."""
+    boost = 1.0
+    if cust.balance > 0:
+        boost *= CUST_OPEN_BALANCE_BOOST
+
+    if cust.last_txn_at:
+        try:
+            txn_dt = datetime.fromisoformat(cust.last_txn_at)
+            ref_time = datetime(2026, 9, 7, 12, 0, tzinfo=UTC)
+            diff_seconds = (ref_time - txn_dt.astimezone(UTC)).total_seconds()
+            days = max(0.0, diff_seconds / 86400.0)
+            recency_weight = 0.5 ** (days / CUST_RECENCY_HALF_LIFE_DAYS)
+            boost *= 1.0 + 0.10 * recency_weight
+        except (ValueError, TypeError):
+            pass
+    return boost
 
 
 def match_customer(query: str, customers: list[Customer]) -> MatchResult:
     """Match a token span against the customer list with threshold, margin, and priors.
 
     Per docs/02-contracts.md §4 & AGENTS.md rule 8:
-      - Top score >= 75 and margin >= 10 -> resolved
-      - Score >= 75 but margin < 10 -> ambiguous
-      - Score < 75 -> unknown (matches nothing, per docs/02 §3 residue table)
+      - Ranking uses boosted scores (priors break ties).
+      - Acceptance strictly requires RAW pre-prior score >= CUST_ACCEPT_SCORE (75).
+      - Requires BOTH raw_margin >= 10 and boosted_margin >= 10 to resolve.
+      - Top raw score >= 75 and both margins >= 10 -> resolved
+      - Top raw score >= 75 but either margin < 10 -> ambiguous
+      - Top raw score < 75 -> unknown (matches nothing, per docs/02 §3 residue table)
+      - Reported score is clamped to [0.0, 100.0].
     """
     folded_query = urdu_fold(query).strip()
     if not folded_query:
@@ -151,62 +185,53 @@ def match_customer(query: str, customers: list[Customer]) -> MatchResult:
             status="unknown", target_id=None, score=0.0, margin=0.0, raw_name=query
         )
 
-    scored: list[tuple[float, Customer]] = []
+    scored: list[tuple[float, float, Customer]] = []
     for cust in customers:
         names_to_check = [cust.display_name] + cust.aliases
         best_sim = max(
             _score_similarity(folded_query, urdu_fold(name).strip())
             for name in names_to_check
         )
-        score = float(best_sim)
+        raw_score = float(best_sim)
+        boost = _compute_customer_boost(cust)
+        boosted_score = raw_score * boost
+        scored.append((boosted_score, raw_score, cust))
 
-        # Apply priors only if raw similarity meets CUST_ACCEPT_SCORE
-        if score >= CUST_ACCEPT_SCORE:
-            if cust.balance > 0:
-                score *= CUST_OPEN_BALANCE_BOOST
-
-            if cust.last_txn_at:
-                try:
-                    txn_dt = datetime.fromisoformat(cust.last_txn_at)
-                    ref_time = datetime(2026, 9, 7, 12, 0, tzinfo=UTC)
-                    diff_seconds = (ref_time - txn_dt.astimezone(UTC)).total_seconds()
-                    days = max(0.0, diff_seconds / 86400.0)
-                    recency_weight = 0.5 ** (days / CUST_RECENCY_HALF_LIFE_DAYS)
-                    score *= 1.0 + 0.10 * recency_weight
-                except (ValueError, TypeError):
-                    pass
-
-        scored.append((score, cust))
-
-    scored.sort(key=lambda x: x[0], reverse=True)
+    scored.sort(key=lambda x: (x[0], x[1]), reverse=True)
 
     if not scored:
         return MatchResult(
             status="unknown", target_id=None, score=0.0, margin=0.0, raw_name=query
         )
 
-    s1, top_cust = scored[0]
-    s2 = scored[1][0] if len(scored) > 1 else 0.0
-    margin = s1 - s2
+    s1_boosted, s1_raw, top_cust = scored[0]
+    s2_boosted, s2_raw = (scored[1][0], scored[1][1]) if len(scored) > 1 else (0.0, 0.0)
+    raw_margin = s1_raw - s2_raw
+    boosted_margin = s1_boosted - s2_boosted
+    margin = min(raw_margin, boosted_margin)
 
-    if s1 >= CUST_ACCEPT_SCORE and margin >= CUST_MARGIN:
+    reported_score = max(0.0, min(100.0, s1_boosted))
+
+    # Acceptance requires RAW pre-prior score to meet CUST_ACCEPT_SCORE (75.0)
+    # AND both raw_margin >= CUST_MARGIN and boosted_margin >= CUST_MARGIN
+    if s1_raw >= CUST_ACCEPT_SCORE and raw_margin >= CUST_MARGIN and boosted_margin >= CUST_MARGIN:
         return MatchResult(
             status="resolved",
             target_id=top_cust.customer_id,
-            score=s1,
+            score=reported_score,
             margin=margin,
             candidates=[top_cust.customer_id],
             raw_name=query,
             display_name=top_cust.display_name,
         )
-    elif s1 >= CUST_ACCEPT_SCORE:
+    elif s1_raw >= CUST_ACCEPT_SCORE:
         ambiguous_candidates = [
-            c.customer_id for s, c in scored if s >= CUST_ACCEPT_SCORE
+            c.customer_id for _, raw, c in scored if raw >= CUST_ACCEPT_SCORE
         ]
         return MatchResult(
             status="ambiguous",
             target_id=None,
-            score=s1,
+            score=reported_score,
             margin=margin,
             candidates=ambiguous_candidates,
             raw_name=query,
@@ -216,7 +241,7 @@ def match_customer(query: str, customers: list[Customer]) -> MatchResult:
         return MatchResult(
             status="unknown",
             target_id=None,
-            score=s1,
+            score=reported_score,
             margin=margin,
             raw_name=query,
         )

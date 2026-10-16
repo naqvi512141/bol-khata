@@ -6,7 +6,7 @@ Do not add, remove, or rename a field without asking.
 
 from typing import Literal
 
-from pydantic import BaseModel
+from pydantic import BaseModel, field_validator
 
 # ---------- ASR ----------
 
@@ -58,6 +58,11 @@ class LineItem(BaseModel):
     derived_fields: list[str] = []  # computed, not heard
     token_span: tuple[int, int]
 
+    @field_validator("match_score")
+    @classmethod
+    def clamp_match_score(cls, v: float) -> float:
+        return max(0.0, min(1.0, float(v)))
+
 
 class CustomerRef(BaseModel):
     customer_id: str | None = None
@@ -66,6 +71,11 @@ class CustomerRef(BaseModel):
     confidence: float = 0.0
     candidates: list[str] = []
     source: Literal["spoken", "open_draft", "cash_default"]
+
+    @field_validator("confidence")
+    @classmethod
+    def clamp_confidence(cls, v: float) -> float:
+        return max(0.0, min(1.0, float(v)))
 
 
 class ResidueSpan(BaseModel):
@@ -111,6 +121,11 @@ class ParsedDraft(BaseModel):
     normalized_tokens: str  # debug + audit
     raw_texts: list[str] = []
 
+    @field_validator("confidence")
+    @classmethod
+    def clamp_confidence(cls, v: float) -> float:
+        return max(0.0, min(1.0, float(v)))
+
 
 # ---------- catalogue ----------
 
@@ -140,3 +155,26 @@ class Customer(BaseModel):
     phone: str | None = None
     balance: int = 0  # integer PKR
     last_txn_at: str | None = None
+
+
+# ---------- API response ----------
+
+
+class UtteranceResponse(ParsedDraft):
+    """Response model for POST /v1/utterance.
+
+    Surfaces ASR engine visibility fields (asr_engine, failover_reason)
+    directly on ParsedDraft so the client can display which engine served
+    each transaction.
+    """
+
+    asr_engine: str  # "groq_whisper" | "local_faster_whisper" | "model_studio"
+    failover_reason: str | None = None
+    idempotent_replay: bool = False
+
+    @property
+    def draft(self) -> ParsedDraft:
+        """Allow accessing self as draft for backwards compatibility."""
+        return self
+
+

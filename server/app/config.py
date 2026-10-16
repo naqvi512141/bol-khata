@@ -1,6 +1,8 @@
-"""App configuration loaded from environment variables."""
+from pathlib import Path
 
 from pydantic_settings import BaseSettings
+
+_ENV_FILE = Path(__file__).resolve().parents[2] / ".env"
 
 
 class Settings(BaseSettings):
@@ -21,7 +23,11 @@ class Settings(BaseSettings):
     SHOP_ID: str = "demo_shop_01"
     LOG_DIR: str = "./logs"
 
-    model_config = {"env_file": ".env", "env_file_encoding": "utf-8"}
+    model_config = {
+        "env_file": _ENV_FILE,
+        "env_file_encoding": "utf-8",
+        "extra": "ignore",
+    }
 
 
 def get_settings() -> Settings:

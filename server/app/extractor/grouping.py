@@ -150,7 +150,7 @@ def group_line_items(
             unit_price=sku.unit_price if sku else None,
             line_total=None,
             price_source="catalogue" if (sku and sku.unit_price) else "missing",
-            match_score=span.score / 100.0,
+            match_score=max(0.0, min(1.0, span.score / 100.0)),
             match_status=span.match_status,  # type: ignore[arg-type]
             candidates=span.candidates,
             derived_fields=[],
